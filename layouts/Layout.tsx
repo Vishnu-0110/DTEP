@@ -3,6 +3,7 @@ import React, { useEffect, useRef, useState } from 'react';
 import { Outlet, Link, useNavigate, useLocation } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { useTheme, ThemeType } from '../context/ThemeContext';
+import api from '../services/api';
 import StudentRealtimeNotifier, {
   EvaluatorSubmissionNotification,
   StudentTaskNotification
@@ -309,8 +310,8 @@ const Layout: React.FC = () => {
     return (
       <div className="min-h-screen relative overflow-hidden bg-app text-adaptive-main">
         <div className="absolute inset-0 bg-[radial-gradient(circle_at_top,rgba(245,158,11,0.18),transparent_32%),radial-gradient(circle_at_bottom,rgba(15,23,42,0.18),transparent_40%)]"></div>
-        <div className="relative min-h-screen flex items-center justify-center p-6">
-          <div className="w-full max-w-3xl glass-card rounded-[40px] border border-amber-500/20 shadow-2xl p-8 sm:p-12">
+        <div className="relative min-h-screen flex items-center justify-center p-4 sm:p-6">
+          <div className="w-full max-w-3xl glass-card rounded-[32px] sm:rounded-[40px] border border-amber-500/20 shadow-2xl p-6 sm:p-8 lg:p-12">
             <div className="flex flex-col items-center text-center">
               <div className="w-20 h-20 rounded-[28px] bg-amber-500/12 border border-amber-500/25 flex items-center justify-center text-amber-400 shadow-sm">
                 <Wrench size={36} />
@@ -318,7 +319,7 @@ const Layout: React.FC = () => {
               <p className="mt-6 text-[11px] font-black uppercase tracking-[0.35em] text-amber-400">
                 Maintenance Mode
               </p>
-              <h1 className="mt-3 text-3xl sm:text-4xl lg:text-5xl font-black tracking-tighter leading-tight">
+              <h1 className="mt-3 text-2xl sm:text-4xl lg:text-5xl font-black tracking-tighter leading-tight">
                 Portal Access Is Temporarily Disabled
               </h1>
               <p className="mt-6 text-base sm:text-lg leading-relaxed text-adaptive-sub font-medium max-w-2xl whitespace-pre-line opacity-60">
@@ -351,7 +352,7 @@ const Layout: React.FC = () => {
   return (
     <div className="min-h-screen flex bg-app text-adaptive-main overflow-x-hidden transition-colors duration-300">
       {/* Sidebar - Mobile & Desktop */}
-      <aside className={`fixed inset-y-0 left-0 z-50 w-[280px] lg:w-72 glass-card transform transition-transform duration-500 ease-in-out lg:translate-x-0 ${isSidebarOpen ? 'translate-x-0 shadow-2xl' : '-translate-x-full shadow-none'} border-r border-white/5`}>
+      <aside className={`fixed inset-y-0 left-0 z-50 w-[85vw] max-w-[280px] lg:w-72 glass-card transform transition-transform duration-500 ease-in-out lg:translate-x-0 ${isSidebarOpen ? 'translate-x-0 shadow-2xl' : '-translate-x-full shadow-none'} border-r border-white/5`}>
         <div className="flex flex-col h-full">
           <div className="p-6 lg:p-8 flex items-center justify-between">
             <Link to="/dashboard" onClick={() => setIsSidebarOpen(false)}>
@@ -400,7 +401,7 @@ const Layout: React.FC = () => {
 
       {/* Main Content Area */}
       <div className="flex-1 flex flex-col lg:ml-72 min-w-0">
-        <header className="h-16 lg:h-20 glass-card sticky top-0 z-40 px-4 lg:px-10 flex items-center justify-between border-b border-white/5 backdrop-blur-xl">
+        <header className="h-16 lg:h-20 glass-card sticky top-0 z-40 px-3 sm:px-4 lg:px-10 flex items-center justify-between border-b border-white/5 backdrop-blur-xl">
           <div className="flex items-center gap-3">
             <button className="lg:hidden text-adaptive-main p-2.5 hover:bg-black/5 dark:hover:bg-white/5 rounded-xl transition-colors active:scale-95" onClick={() => setIsSidebarOpen(true)}>
               <Menu size={24} />
@@ -414,7 +415,7 @@ const Layout: React.FC = () => {
             </div>
           </div>
 
-          <div className="flex items-center gap-1.5 sm:gap-3">
+          <div className="flex items-center gap-1 sm:gap-3 min-w-0">
             <button 
                 onClick={toggleMode}
                 className="p-2 sm:p-2.5 text-adaptive-sub hover:theme-text-primary transition-all bg-black/5 dark:bg-white/5 rounded-xl border border-white/5 group active:scale-95"
@@ -436,7 +437,7 @@ const Layout: React.FC = () => {
                 </button>
                 
                 {isThemeMenuOpen && (
-                    <div className="absolute top-14 right-0 w-44 glass-card rounded-2xl p-2.5 shadow-2xl border border-white/10 z-20 animate-in fade-in zoom-in-95 duration-200">
+                    <div className="absolute top-14 right-0 w-44 max-w-[calc(100vw-1rem)] glass-card rounded-2xl p-2.5 shadow-2xl border border-white/10 z-20 animate-in fade-in zoom-in-95 duration-200">
                         <p className="text-[9px] font-black text-adaptive-sub uppercase tracking-[0.2em] mb-2 px-2">Visual Core</p>
                         <div className="space-y-0.5">
                             {themes.map((t) => (
@@ -478,7 +479,7 @@ const Layout: React.FC = () => {
                 </button>
 
                 {isNotificationMenuOpen && (
-                  <div className="absolute top-14 right-0 w-[320px] max-w-[85vw] glass-card rounded-2xl p-3 shadow-2xl border border-white/10 z-20 animate-in fade-in zoom-in-95 duration-200">
+                  <div className="absolute top-14 right-0 w-[calc(100vw-1rem)] max-w-[320px] glass-card rounded-2xl p-3 shadow-2xl border border-white/10 z-20 animate-in fade-in zoom-in-95 duration-200">
                       <div className="flex items-center justify-between gap-2 px-1 pb-2 border-b border-white/10 mb-2">
                         <p className="text-[9px] font-black text-adaptive-sub uppercase tracking-[0.2em]">
                           {isStudent ? 'Assignments' : 'Submissions'}
@@ -548,7 +549,7 @@ const Layout: React.FC = () => {
               </button>
             )}
             
-            <div className="flex items-center gap-2 sm:gap-3 bg-black/5 dark:bg-white/5 pl-2.5 sm:pl-4 pr-1 py-1 rounded-2xl border border-white/5">
+            <div className="flex min-w-0 items-center gap-2 sm:gap-3 bg-black/5 dark:bg-white/5 pl-1.5 sm:pl-4 pr-1 py-1 rounded-2xl border border-white/5">
                 <div className="text-right hidden sm:block">
                     <p className="text-[11px] font-black text-adaptive-main leading-none truncate max-w-[80px]">{user?.name}</p>
                     <p className="text-[9px] font-black theme-text-primary uppercase tracking-tighter mt-1">{user?.role}</p>
@@ -560,7 +561,7 @@ const Layout: React.FC = () => {
           </div>
         </header>
 
-        <main className="flex-1 p-4 sm:p-6 lg:p-10 overflow-y-auto custom-scrollbar">
+        <main className="flex-1 p-3 sm:p-6 lg:p-10 overflow-y-auto custom-scrollbar">
           <div className="max-w-[1600px] mx-auto">
             <StudentRealtimeNotifier
               onTaskNotification={handleStudentTaskNotification}

@@ -210,12 +210,12 @@ const StudentTasks: React.FC = () => {
           <h1 className="text-2xl sm:text-3xl font-black text-adaptive-main tracking-tighter">My Workload</h1>
           <p className="text-adaptive-sub font-medium text-sm sm:text-base">Current academic assignments and evaluation status.</p>
         </div>
-        <div className="flex gap-3 w-full sm:w-auto">
-          <div className="flex-1 sm:flex-none glass-card px-4 py-2 rounded-2xl text-[9px] font-black uppercase tracking-widest border-l-4 border-l-emerald-500 flex items-center justify-center gap-2">
+        <div className="grid grid-cols-1 min-[420px]:grid-cols-2 gap-3 w-full sm:w-auto">
+          <div className="glass-card px-4 py-2 rounded-2xl text-[9px] font-black uppercase tracking-widest border-l-4 border-l-emerald-500 flex items-center justify-center gap-2">
             <CheckCircle2 size={12} className="text-emerald-500" />
             {tasks.filter(t => t.hasSubmission && !t.isAutoZero).length} Submitted
           </div>
-          <div className="flex-1 sm:flex-none glass-card px-4 py-2 rounded-2xl text-[9px] font-black uppercase tracking-widest border-l-4 border-l-blue-500 flex items-center justify-center gap-2">
+          <div className="glass-card px-4 py-2 rounded-2xl text-[9px] font-black uppercase tracking-widest border-l-4 border-l-blue-500 flex items-center justify-center gap-2">
             <Clock size={12} className="text-blue-500" />
             {tasks.filter(t => getDisplayStatus(t, nowMs) === 'assigned').length} Due
           </div>
@@ -272,17 +272,17 @@ const StudentTasks: React.FC = () => {
 
               <div className="mt-auto space-y-6">
                 <div className="bg-adaptive-nested p-3 rounded-2xl border border-white/5 space-y-2">
-                  <div className="flex items-center justify-between text-[10px] font-black uppercase tracking-widest">
+                  <div className="flex items-start justify-between gap-3 text-[10px] font-black uppercase tracking-widest">
                     <span className="text-adaptive-sub flex items-center gap-2">
                       <Calendar size={14} className="theme-text-primary" /> Deadline
                     </span>
-                    <span className={displayStatus === 'overdue' ? 'text-rose-500' : 'text-adaptive-main'}>
+                    <span className={`text-right leading-snug ${displayStatus === 'overdue' ? 'text-rose-500' : 'text-adaptive-main'}`}>
                       {formatDeadlineDateTime(task.deadline)}
                     </span>
                   </div>
-                  <div className="flex items-center justify-between text-[9px] font-black uppercase tracking-widest">
+                  <div className="flex items-center justify-between gap-3 text-[9px] font-black uppercase tracking-widest">
                     <span className="text-adaptive-sub">Countdown</span>
-                    <span className={displayStatus === 'overdue' ? 'text-rose-500' : 'theme-text-primary'}>
+                    <span className={`text-right ${displayStatus === 'overdue' ? 'text-rose-500' : 'theme-text-primary'}`}>
                       {formatCountdown(deadlineMs, nowMs)}
                     </span>
                   </div>
@@ -340,8 +340,8 @@ const StudentTasks: React.FC = () => {
       {isUploadModalOpen && (
         <div className="fixed inset-0 z-[60] flex items-center justify-center p-4">
           <div className="absolute inset-0 modal-overlay" onClick={() => { if (!uploading) { setIsUploadModalOpen(false); setAnswerText(''); } }}></div>
-          <div className="relative modal-surface rounded-[40px] p-6 sm:p-10 w-full max-w-lg animate-in zoom-in-95 duration-300">
-            <div className="text-center mb-8">
+          <div className="relative modal-surface rounded-[32px] sm:rounded-[40px] p-5 sm:p-10 w-full max-w-lg max-h-[90vh] overflow-y-auto custom-scrollbar animate-in zoom-in-95 duration-300">
+            <div className="text-center mb-6 sm:mb-8">
               <div className="w-14 h-14 bg-blue-500/10 rounded-2xl flex items-center justify-center text-blue-500 mx-auto mb-4 border border-blue-500/10 shadow-sm">
                 <Upload size={24} />
               </div>
@@ -350,7 +350,7 @@ const StudentTasks: React.FC = () => {
             </div>
 
             <div className="space-y-6">
-              <div className={`border-2 border-dashed rounded-3xl p-8 sm:p-12 text-center transition-all group cursor-pointer ${selectedFile ? 'theme-border-primary bg-adaptive-nested' : 'border-white/10 hover:theme-border-primary hover:bg-black/5 dark:hover:bg-white/5'}`}>
+              <div className={`border-2 border-dashed rounded-3xl p-6 sm:p-12 text-center transition-all group cursor-pointer ${selectedFile ? 'theme-border-primary bg-adaptive-nested' : 'border-white/10 hover:theme-border-primary hover:bg-black/5 dark:hover:bg-white/5'}`}>
                 <input 
                   type="file" 
                   id="fileInput" 
@@ -363,7 +363,7 @@ const StudentTasks: React.FC = () => {
                     <span className={`p-4 rounded-2xl transition-all shadow-md ${selectedFile ? 'theme-bg-primary text-white' : 'bg-adaptive-nested group-hover:scale-105'}`}>
                       {selectedFile ? <CheckCircle2 size={24} /> : <FileText size={24} />}
                     </span>
-                    <span className="font-bold text-adaptive-main tracking-tight text-sm truncate max-w-[200px]">
+                    <span className="font-bold text-adaptive-main tracking-tight text-sm break-all text-center">
                       {selectedFile ? selectedFile.name : 'Select Submission Node'}
                     </span>
                     <span className="text-[9px] text-adaptive-sub font-black uppercase tracking-widest opacity-60">
@@ -381,7 +381,7 @@ const StudentTasks: React.FC = () => {
                 className="w-full bg-adaptive-nested border border-white/10 rounded-2xl py-3 px-4 text-sm text-adaptive-main focus:outline-none focus:theme-border-primary transition-all custom-scrollbar resize-none"
               />
 
-              <div className="flex gap-3">
+              <div className="flex flex-col sm:flex-row gap-3">
                 <button 
                   onClick={() => { setIsUploadModalOpen(false); setAnswerText(''); }} 
                   disabled={uploading}
@@ -392,7 +392,7 @@ const StudentTasks: React.FC = () => {
                 <button 
                   onClick={handleUpload}
                   disabled={!selectedFile || uploading}
-                  className={`flex-2 btn-primary rounded-2xl py-4 transition-all flex items-center justify-center gap-2 px-8 text-[9px] uppercase tracking-widest ${(!selectedFile || uploading) ? 'opacity-30 cursor-not-allowed' : 'active:scale-95'}`}
+                  className={`flex-1 btn-primary rounded-2xl py-4 transition-all flex items-center justify-center gap-2 px-8 text-[9px] uppercase tracking-widest ${(!selectedFile || uploading) ? 'opacity-30 cursor-not-allowed' : 'active:scale-95'}`}
                 >
                   {uploading ? <Loader2 size={16} className="animate-spin" /> : 'Confirm Archive'}
                 </button>

@@ -231,7 +231,7 @@ const AdminUsers: React.FC = () => {
 
       {currentUser?.role === 'admin' && (
         <div className="glass-card rounded-3xl border border-white/5 p-5 sm:p-6 space-y-4">
-          <div className="flex items-center justify-between gap-3">
+          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
             <div>
               <h3 className="text-sm font-black text-adaptive-main uppercase tracking-widest flex items-center gap-2">
                 <Wrench size={14} className="theme-text-primary" />
@@ -243,7 +243,7 @@ const AdminUsers: React.FC = () => {
             </div>
             <button
               onClick={() => setMaintenanceEnabled((prev) => !prev)}
-              className={`px-3 py-2 rounded-xl text-[9px] font-black uppercase tracking-widest border transition-all ${
+              className={`w-full sm:w-auto px-3 py-2 rounded-xl text-[9px] font-black uppercase tracking-widest border transition-all ${
                 maintenanceEnabled
                   ? 'bg-amber-500/10 text-amber-400 border-amber-500/20'
                   : 'bg-adaptive-nested text-adaptive-sub border-white/10'
@@ -270,7 +270,7 @@ const AdminUsers: React.FC = () => {
           <button
             onClick={handleSaveMaintenance}
             disabled={isSavingMaintenance}
-            className={`btn-primary rounded-xl py-3 px-5 text-[9px] font-black uppercase tracking-widest transition-all active:scale-95 ${
+            className={`w-full sm:w-auto btn-primary rounded-xl py-3 px-5 text-[9px] font-black uppercase tracking-widest transition-all active:scale-95 ${
               isSavingMaintenance ? 'opacity-70 cursor-not-allowed' : ''
             }`}
           >
@@ -291,29 +291,82 @@ const AdminUsers: React.FC = () => {
       </div>
 
       <div className="glass-card rounded-[32px] overflow-hidden shadow-sm border border-white/5">
-        <div className="overflow-x-auto custom-scrollbar">
-          {isLoading ? (
-            <div className="flex flex-col items-center justify-center p-20 gap-4">
-              <Loader2 className="animate-spin theme-text-primary" size={40} />
-              <p className="text-adaptive-sub font-black uppercase tracking-widest text-[9px] animate-pulse">Fetching Nodes</p>
+        {isLoading ? (
+          <div className="flex flex-col items-center justify-center p-10 sm:p-16 gap-4">
+            <Loader2 className="animate-spin theme-text-primary" size={40} />
+            <p className="text-adaptive-sub font-black uppercase tracking-widest text-[9px] animate-pulse">Fetching Nodes</p>
+          </div>
+        ) : filteredUsers.length === 0 ? (
+          <div className="px-6 py-16 sm:py-20 text-center text-adaptive-sub font-bold text-xs uppercase tracking-widest opacity-40">
+            Null Dataset
+          </div>
+        ) : (
+          <>
+            <div className="grid gap-4 p-4 md:hidden">
+              {filteredUsers.map((u) => {
+                const id = String(u._id || u.id);
+                const isDeleting = deletingIds.has(id);
+                const isSelf = id === String(currentUser?.id || '') || id === 'mock_admin_1' || u.email === 'admin@dtep.com';
+
+                return (
+                  <div key={id} className="rounded-3xl border border-white/5 bg-adaptive-nested/40 p-4 space-y-4">
+                    <div className="flex items-start gap-3">
+                      <div className={`w-11 h-11 rounded-xl flex items-center justify-center border shadow-sm shrink-0 transition-colors duration-300 ${isSelf ? 'theme-bg-primary text-white border-transparent' : 'bg-adaptive-nested text-adaptive-sub border-white/5'}`}>
+                        <UserIcon size={18} />
+                      </div>
+                      <div className="min-w-0 flex-1">
+                        <div className="font-bold text-adaptive-main tracking-tight text-sm break-words flex items-center gap-1.5 flex-wrap">
+                          {u.name}
+                          {isSelf && <span className="text-[7px] bg-blue-500 text-white px-1.5 py-0.5 rounded font-black uppercase">Me</span>}
+                        </div>
+                        <div className="text-[10px] text-adaptive-sub break-all mt-1">{u.email}</div>
+                      </div>
+                    </div>
+
+                    <div className="grid grid-cols-1 min-[380px]:grid-cols-2 gap-3">
+                      <div>
+                        <p className="text-[8px] font-black text-adaptive-sub uppercase tracking-widest mb-1">Authority</p>
+                        <span className={`inline-flex px-2.5 py-1 rounded-lg text-[8px] font-black uppercase tracking-widest border transition-all duration-300 ${
+                          u.role === 'admin' ? 'bg-purple-500/10 text-purple-500 border-purple-500/10' :
+                          u.role === 'evaluator' ? 'bg-amber-500/10 text-amber-500 border-amber-500/10' : 'bg-blue-500/10 text-blue-500 border-blue-500/10'
+                        }`}>
+                          {u.role}
+                        </span>
+                      </div>
+                      <div>
+                        <p className="text-[8px] font-black text-adaptive-sub uppercase tracking-widest mb-1">Unit</p>
+                        <div className="text-[11px] font-bold text-adaptive-sub break-words">{u.department || 'GLOBAL'}</div>
+                      </div>
+                    </div>
+
+                    <button
+                      onClick={() => handleDelete(id)}
+                      disabled={isDeleting || isSelf}
+                      className={`w-full p-3 rounded-2xl text-[9px] font-black uppercase tracking-widest transition-all flex items-center justify-center gap-2 ${
+                        isSelf ? 'opacity-20 cursor-not-allowed bg-adaptive-nested border border-white/5' :
+                        isDeleting ? 'bg-red-500/20 text-red-500 border border-red-500/20' : 'text-adaptive-sub hover:text-red-500 hover:bg-red-500/10 active:scale-95 border border-white/5'
+                      }`}
+                    >
+                      {isDeleting ? <Loader2 size={16} className="animate-spin" /> : <Trash2 size={16} />}
+                      Remove User
+                    </button>
+                  </div>
+                );
+              })}
             </div>
-          ) : (
-            <table className="w-full text-left min-w-[650px]">
-              <thead>
-                <tr className="border-b border-white/5 bg-adaptive-nested/50">
-                  <th className="px-6 py-4 text-[9px] font-black text-adaptive-sub uppercase tracking-widest">Profile</th>
-                  <th className="px-6 py-4 text-[9px] font-black text-adaptive-sub uppercase tracking-widest">Authority</th>
-                  <th className="px-6 py-4 text-[9px] font-black text-adaptive-sub uppercase tracking-widest">Unit</th>
-                  <th className="px-6 py-4 text-[9px] font-black text-adaptive-sub uppercase tracking-widest text-right">Ops</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-white/5">
-                {filteredUsers.length === 0 ? (
-                  <tr>
-                    <td colSpan={4} className="px-6 py-20 text-center text-adaptive-sub font-bold text-xs uppercase tracking-widest opacity-40">Null Dataset</td>
+
+            <div className="hidden md:block overflow-x-auto custom-scrollbar">
+              <table className="w-full text-left min-w-[650px]">
+                <thead>
+                  <tr className="border-b border-white/5 bg-adaptive-nested/50">
+                    <th className="px-6 py-4 text-[9px] font-black text-adaptive-sub uppercase tracking-widest">Profile</th>
+                    <th className="px-6 py-4 text-[9px] font-black text-adaptive-sub uppercase tracking-widest">Authority</th>
+                    <th className="px-6 py-4 text-[9px] font-black text-adaptive-sub uppercase tracking-widest">Unit</th>
+                    <th className="px-6 py-4 text-[9px] font-black text-adaptive-sub uppercase tracking-widest text-right">Ops</th>
                   </tr>
-                ) : (
-                  filteredUsers.map((u) => {
+                </thead>
+                <tbody className="divide-y divide-white/5">
+                  {filteredUsers.map((u) => {
                     const id = String(u._id || u.id);
                     const isDeleting = deletingIds.has(id);
                     const isSelf = id === String(currentUser?.id || '') || id === 'mock_admin_1' || u.email === 'admin@dtep.com';
@@ -327,7 +380,7 @@ const AdminUsers: React.FC = () => {
                             </div>
                             <div className="min-w-0">
                               <div className="font-bold text-adaptive-main tracking-tight truncate text-sm flex items-center gap-1.5">
-                                {u.name} 
+                                {u.name}
                                 {isSelf && <span className="text-[7px] bg-blue-500 text-white px-1.5 py-0.5 rounded font-black uppercase">Me</span>}
                               </div>
                               <div className="text-[10px] text-adaptive-sub truncate">{u.email}</div>
@@ -336,7 +389,7 @@ const AdminUsers: React.FC = () => {
                         </td>
                         <td className="px-6 py-4">
                           <span className={`px-2.5 py-1 rounded-lg text-[8px] font-black uppercase tracking-widest border transition-all duration-300 ${
-                            u.role === 'admin' ? 'bg-purple-500/10 text-purple-500 border-purple-500/10' : 
+                            u.role === 'admin' ? 'bg-purple-500/10 text-purple-500 border-purple-500/10' :
                             u.role === 'evaluator' ? 'bg-amber-500/10 text-amber-500 border-amber-500/10' : 'bg-blue-500/10 text-blue-500 border-blue-500/10'
                           }`}>
                             {u.role}
@@ -346,11 +399,11 @@ const AdminUsers: React.FC = () => {
                           <div className="text-[11px] font-bold text-adaptive-sub truncate max-w-[120px]">{u.department || 'GLOBAL'}</div>
                         </td>
                         <td className="px-6 py-4 text-right">
-                          <button 
+                          <button
                             onClick={() => handleDelete(id)}
                             disabled={isDeleting || isSelf}
                             className={`p-2.5 rounded-xl transition-all ${
-                              isSelf ? 'opacity-20 cursor-not-allowed' : 
+                              isSelf ? 'opacity-20 cursor-not-allowed' :
                               isDeleting ? 'bg-red-500/20 text-red-500' : 'text-adaptive-sub hover:text-red-500 hover:bg-red-500/10 active:scale-90 border border-transparent'
                             }`}
                           >
@@ -359,12 +412,12 @@ const AdminUsers: React.FC = () => {
                         </td>
                       </tr>
                     );
-                  })
-                )}
-              </tbody>
-            </table>
-          )}
-        </div>
+                  })}
+                </tbody>
+              </table>
+            </div>
+          </>
+        )}
       </div>
 
       {isModalOpen && (
@@ -385,7 +438,7 @@ const AdminUsers: React.FC = () => {
                 />
               </div>
 
-              <div className="grid grid-cols-2 gap-3">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                 <div className="space-y-1">
                   <label className="text-[9px] font-black text-adaptive-sub uppercase tracking-widest ml-1">Classification</label>
                   <select 
@@ -431,7 +484,7 @@ const AdminUsers: React.FC = () => {
                 />
               </div>
 
-              <div className="flex gap-3 pt-4">
+              <div className="flex flex-col sm:flex-row gap-3 pt-4">
                 <button 
                   type="button" 
                   disabled={isSubmitting}
@@ -443,7 +496,7 @@ const AdminUsers: React.FC = () => {
                 <button 
                   type="submit" 
                   disabled={isSubmitting}
-                  className="flex-2 btn-primary rounded-xl py-3.5 transition-all flex items-center justify-center gap-2 px-6 uppercase text-[9px] tracking-widest active:scale-95"
+                  className="flex-1 btn-primary rounded-xl py-3.5 transition-all flex items-center justify-center gap-2 px-6 uppercase text-[9px] tracking-widest active:scale-95"
                 >
                   {isSubmitting ? <Loader2 size={16} className="animate-spin" /> : 'Confirm Build'}
                 </button>

@@ -254,12 +254,12 @@ const Submissions: React.FC = () => {
           </h1>
           <p className="text-adaptive-sub text-sm font-medium">Verify methodology and authorize performance metrics.</p>
         </div>
-        <div className="flex items-center gap-3 bg-adaptive-nested/50 p-2 rounded-2xl border border-white/5 w-fit">
-             <div className="px-4 py-2 rounded-xl bg-app border border-white/5 text-center min-w-[70px]">
+        <div className="grid grid-cols-2 gap-3 bg-adaptive-nested/50 p-2 rounded-2xl border border-white/5 w-full min-[420px]:w-fit">
+             <div className="px-4 py-2 rounded-xl bg-app border border-white/5 text-center min-w-0">
                 <p className="text-[8px] font-black text-adaptive-sub uppercase tracking-widest leading-none">Total</p>
                 <p className="text-lg font-black text-adaptive-main leading-none mt-1.5">{submissions.length}</p>
              </div>
-             <div className="px-4 py-2 rounded-xl bg-blue-500/10 border border-blue-500/10 text-center min-w-[70px]">
+             <div className="px-4 py-2 rounded-xl bg-blue-500/10 border border-blue-500/10 text-center min-w-0">
                 <p className="text-[8px] font-black theme-text-primary uppercase tracking-widest leading-none">Pending</p>
                 <p className="text-lg font-black theme-text-primary leading-none mt-1.5">{submissions.filter(s => s.status !== 'evaluated').length}</p>
              </div>
@@ -275,7 +275,7 @@ const Submissions: React.FC = () => {
               <p className="text-adaptive-sub font-black uppercase tracking-widest text-[9px] animate-pulse">Scanning Archive</p>
             </div>
           ) : submissions.length === 0 ? (
-            <div className="glass-card p-20 rounded-[32px] text-center border-dashed border-white/10 flex flex-col items-center justify-center gap-4">
+            <div className="glass-card p-10 sm:p-20 rounded-[32px] text-center border-dashed border-white/10 flex flex-col items-center justify-center gap-4">
               <Search size={32} className="opacity-10" />
               <p className="text-adaptive-sub font-bold text-xs uppercase tracking-widest">No transmissions detected.</p>
             </div>
@@ -297,7 +297,7 @@ const Submissions: React.FC = () => {
                 }`}
               >
                 <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
-                  <div className="flex items-center gap-5">
+                  <div className="flex w-full min-w-0 items-center gap-4 sm:gap-5">
                     <div className={`w-12 h-12 sm:w-14 sm:h-14 rounded-2xl flex items-center justify-center border transition-all shadow-md shrink-0 ${
                       sub.isAutoZero
                         ? 'bg-rose-500/10 text-rose-400 border-rose-500/10'
@@ -305,12 +305,12 @@ const Submissions: React.FC = () => {
                     }`}>
                       <FileText size={22} />
                     </div>
-                    <div className="min-w-0">
+                    <div className="min-w-0 flex-1">
                       <h3 className="text-lg font-black text-adaptive-main group-hover:theme-text-primary transition-colors tracking-tight truncate">{sub.student?.name}</h3>
-                      <div className="flex items-center gap-3 mt-1.5 overflow-hidden">
+                      <div className="mt-1.5 flex flex-wrap items-center gap-x-3 gap-y-1">
                           <span className="text-[9px] text-adaptive-sub uppercase font-black tracking-widest shrink-0">{new Date(sub.submittedAt).toLocaleDateString()}</span>
-                          <span className="w-1 h-1 bg-slate-700 rounded-full shrink-0"></span>
-                          <span className="text-[9px] text-adaptive-sub uppercase font-black tracking-widest truncate">{sub.fileName}</span>
+                          <span className="hidden min-[420px]:block w-1 h-1 bg-slate-700 rounded-full shrink-0"></span>
+                          <span className="text-[9px] text-adaptive-sub uppercase font-black tracking-widest break-all">{sub.fileName}</span>
                       </div>
                     </div>
                   </div>
@@ -341,8 +341,8 @@ const Submissions: React.FC = () => {
         {/* Evaluation Panel */}
         <div className="xl:col-span-1 xl:sticky xl:top-24">
           {activeSubmission ? (
-            <div className="glass-card p-6 sm:p-10 rounded-[40px] shadow-2xl animate-in slide-in-from-right-8 duration-500 border border-white/10">
-              <div className="flex items-start justify-between mb-8">
+            <div className="glass-card p-5 sm:p-10 rounded-[32px] sm:rounded-[40px] shadow-2xl animate-in slide-in-from-right-8 duration-500 border border-white/10">
+              <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between mb-8">
                 <div className="space-y-1">
                   <p className="text-[9px] font-black theme-text-primary uppercase tracking-widest">Active Focus</p>
                   <h2 className="text-2xl font-black text-adaptive-main tracking-tighter uppercase leading-none">
@@ -359,7 +359,7 @@ const Submissions: React.FC = () => {
                   <Target size={14} className="theme-text-primary mt-1 shrink-0" />
                   <div className="min-w-0">
                     <p className="text-[8px] font-black text-adaptive-sub uppercase tracking-widest mb-0.5">Reference Task</p>
-                    <p className="text-xs font-bold text-adaptive-main truncate">{task?.title || "Evaluating Component"}</p>
+                    <p className="text-xs font-bold text-adaptive-main break-words">{task?.title || "Evaluating Component"}</p>
                   </div>
                 </div>
 
@@ -394,7 +394,7 @@ const Submissions: React.FC = () => {
                     onChange={(e) => setMarks(Number(e.target.value))}
                     max={100} min={0}
                     disabled={isEvaluated || isSubmitting}
-                    className={`w-full bg-adaptive-nested border-2 rounded-2xl py-5 px-6 text-4xl font-black text-center focus:outline-none focus:theme-border-primary transition-all ${currentScoreTone.borderClass} ${currentScoreTone.valueTextClass} ${isEvaluated ? 'opacity-50 cursor-not-allowed' : ''}`}
+                    className={`w-full bg-adaptive-nested border-2 rounded-2xl py-5 px-6 text-3xl sm:text-4xl font-black text-center focus:outline-none focus:theme-border-primary transition-all ${currentScoreTone.borderClass} ${currentScoreTone.valueTextClass} ${isEvaluated ? 'opacity-50 cursor-not-allowed' : ''}`}
                   />
                 </div>
 
@@ -459,7 +459,7 @@ const Submissions: React.FC = () => {
               </div>
             </div>
           ) : (
-            <div className="glass-card p-16 rounded-[40px] flex flex-col items-center justify-center text-center sticky top-24 border-dashed border-white/10 border-2">
+            <div className="glass-card p-8 sm:p-16 rounded-[32px] sm:rounded-[40px] flex flex-col items-center justify-center text-center xl:sticky xl:top-24 border-dashed border-white/10 border-2">
               <div className="w-20 h-20 bg-adaptive-nested/50 rounded-3xl flex items-center justify-center text-adaptive-sub mb-6 border border-white/5 shadow-inner">
                 <Target size={32} className="opacity-10" />
               </div>

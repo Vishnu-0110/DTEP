@@ -97,7 +97,7 @@ const TaskDetails: React.FC = () => {
         <span className="text-[10px] font-black uppercase tracking-[0.2em]">Dashboard Core</span>
       </Link>
 
-      <div className="glass-card rounded-[40px] sm:rounded-[48px] p-6 sm:p-10 lg:p-14 border border-white/10 shadow-2xl relative overflow-hidden">
+      <div className="glass-card rounded-[32px] sm:rounded-[48px] p-5 sm:p-10 lg:p-14 border border-white/10 shadow-2xl relative overflow-hidden">
         <div className="absolute top-0 right-0 p-8 hidden sm:block">
             <div className="bg-blue-600/10 text-blue-400 px-4 py-2 rounded-xl text-[9px] font-black uppercase tracking-widest border border-blue-500/10">
                 Tier: CS-ADV
@@ -137,19 +137,19 @@ const TaskDetails: React.FC = () => {
           {/* AI Analysis Report Section */}
           {submission?.aiReport && (
             <div className="space-y-6 pt-4 animate-in fade-in duration-700">
-              <div className="flex items-center justify-between">
-                <div className="flex items-center gap-3">
+              <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+                <div className="flex items-center gap-3 min-w-0">
                   <div className="w-10 h-10 rounded-xl theme-bg-primary flex items-center justify-center text-white shadow-lg theme-shadow-primary">
                     <Sparkles size={20} />
                   </div>
-                  <div>
+                  <div className="min-w-0">
                     <h3 className="text-xl font-black text-adaptive-main tracking-tight uppercase leading-none">AI Analysis Report</h3>
                     <p className="text-[9px] font-black theme-text-primary uppercase tracking-widest mt-1.5 flex items-center gap-1">
                       <Zap size={10} /> Automated Assessment Generated
                     </p>
                   </div>
                 </div>
-                <div className="text-right">
+                <div className="text-left sm:text-right">
                   <p className={`text-3xl font-black leading-none ${verifiedScoreTone.valueTextClass}`}>{verifiedScore ?? 0}%</p>
                   <p className="text-[8px] font-black text-adaptive-sub uppercase tracking-widest mt-1">Verified Score</p>
                 </div>

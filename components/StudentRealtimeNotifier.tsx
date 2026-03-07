@@ -356,7 +356,7 @@ const StudentRealtimeNotifier: React.FC<StudentRealtimeNotifierProps> = ({
       )}
 
       {toasts.length > 0 && (
-        <div className="fixed bottom-4 right-4 z-[90] space-y-2 w-[calc(100%-2rem)] max-w-sm">
+        <div className="fixed inset-x-4 bottom-4 z-[90] space-y-2 sm:inset-x-auto sm:right-4 sm:w-[calc(100%-2rem)] sm:max-w-sm">
           {toasts.map((toast) => (
             <div
               key={toast.id}

@@ -49,21 +49,21 @@ const LogsModal: React.FC<LogsModalProps> = ({ isOpen, onClose }) => {
   };
 
   return (
-    <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 sm:p-6 lg:p-10">
+    <div className="fixed inset-0 z-[100] flex items-center justify-center p-3 sm:p-6 lg:p-10">
       <div 
         className="absolute inset-0 modal-overlay animate-in fade-in duration-300" 
         onClick={onClose}
       />
       
-      <div className="relative modal-surface w-full max-w-5xl max-h-[90vh] rounded-[40px] flex flex-col overflow-hidden animate-in zoom-in-95 duration-300">
+      <div className="relative modal-surface w-full max-w-5xl max-h-[92vh] rounded-[28px] sm:rounded-[40px] flex flex-col overflow-hidden animate-in zoom-in-95 duration-300">
         {/* Header */}
-        <div className="p-8 border-b border-white/5 flex items-center justify-between shrink-0 bg-adaptive-nested">
-          <div className="flex items-center gap-5">
-            <div className="w-14 h-14 rounded-2xl bg-black/5 dark:bg-slate-900 border border-white/10 flex items-center justify-center theme-text-primary shadow-xl">
+        <div className="p-4 sm:p-8 border-b border-white/5 flex items-start justify-between gap-4 shrink-0 bg-adaptive-nested">
+          <div className="flex items-center gap-3 sm:gap-5 min-w-0">
+            <div className="w-12 h-12 sm:w-14 sm:h-14 rounded-2xl bg-black/5 dark:bg-slate-900 border border-white/10 flex items-center justify-center theme-text-primary shadow-xl shrink-0">
               <Terminal size={28} />
             </div>
-            <div>
-              <h2 className="text-2xl font-black text-adaptive-main tracking-tighter uppercase leading-none">Kernel Logs</h2>
+            <div className="min-w-0">
+              <h2 className="text-xl sm:text-2xl font-black text-adaptive-main tracking-tighter uppercase leading-none">Kernel Logs</h2>
               <p className="text-adaptive-sub text-[10px] font-black uppercase tracking-[0.2em] mt-2">System Audit & Real-time Event Stream</p>
             </div>
           </div>
@@ -76,7 +76,7 @@ const LogsModal: React.FC<LogsModalProps> = ({ isOpen, onClose }) => {
         </div>
 
         {/* Stats Row */}
-        <div className="px-8 py-5 border-b border-white/5 bg-adaptive-nested/50 flex flex-wrap gap-6 shrink-0">
+        <div className="px-4 sm:px-8 py-4 sm:py-5 border-b border-white/5 bg-adaptive-nested/50 flex flex-wrap gap-3 sm:gap-6 shrink-0">
           <div className="flex items-center gap-2 text-[10px] font-black uppercase tracking-widest text-adaptive-sub">
             <div className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></div>
             System Health: Optimal
@@ -92,11 +92,11 @@ const LogsModal: React.FC<LogsModalProps> = ({ isOpen, onClose }) => {
         </div>
 
         {/* Log Stream */}
-        <div className="flex-1 overflow-y-auto custom-scrollbar p-6 sm:p-8 space-y-4">
+        <div className="flex-1 overflow-y-auto custom-scrollbar p-4 sm:p-8 space-y-4">
           {logs.map((log) => (
             <div 
               key={log.id} 
-              className="glass-card bg-adaptive-nested p-5 rounded-3xl border border-white/5 hover:theme-border-primary transition-all flex flex-col md:flex-row md:items-center gap-4 group shadow-sm hover:shadow-md"
+              className="glass-card bg-adaptive-nested p-4 sm:p-5 rounded-3xl border border-white/5 hover:theme-border-primary transition-all flex flex-col md:flex-row md:items-center gap-4 group shadow-sm hover:shadow-md"
             >
               <div className="flex items-center gap-4 shrink-0">
                 <span className="font-mono text-[10px] font-black text-adaptive-sub group-hover:theme-text-primary transition-colors uppercase">
@@ -133,7 +133,7 @@ const LogsModal: React.FC<LogsModalProps> = ({ isOpen, onClose }) => {
         </div>
 
         {/* Footer */}
-        <div className="p-6 bg-adaptive-nested border-t border-white/5 flex flex-col sm:flex-row justify-between items-center shrink-0 gap-4">
+        <div className="p-4 sm:p-6 bg-adaptive-nested border-t border-white/5 flex flex-col sm:flex-row justify-between items-center shrink-0 gap-4">
           <p className="text-[9px] font-black text-adaptive-sub uppercase tracking-widest italic opacity-60 text-center sm:text-left">
             End of stream. Logs are immutable and retained for 90 days.
           </p>

@@ -41,17 +41,17 @@ const Login: React.FC = () => {
   };
 
   return (
-    <div className="min-h-screen w-full flex items-center justify-center bg-app p-4 relative overflow-hidden transition-colors duration-500">
+    <div className="min-h-screen w-full flex items-start sm:items-center justify-center bg-app p-4 sm:p-6 relative overflow-hidden transition-colors duration-500">
       {/* Background Decorative Elements - Mode Aware */}
       <div className="absolute top-0 -left-1/4 w-1/2 h-1/2 bg-blue-600/5 dark:bg-blue-600/10 blur-[120px] rounded-full"></div>
       <div className="absolute bottom-0 -right-1/4 w-1/2 h-1/2 bg-indigo-600/5 dark:bg-indigo-600/10 blur-[120px] rounded-full"></div>
 
-      <div className="w-full max-w-md glass-card rounded-[40px] p-8 lg:p-12 shadow-2xl relative z-10 border border-white/10 animate-in fade-in duration-700">
-        <div className="text-center mb-10">
+      <div className="my-4 w-full max-w-md glass-card rounded-[32px] sm:rounded-[40px] p-6 sm:p-8 lg:p-12 shadow-2xl relative z-10 border border-white/10 animate-in fade-in duration-700">
+        <div className="text-center mb-8 sm:mb-10">
           <div className="w-20 h-20 theme-bg-primary rounded-3xl flex items-center justify-center mx-auto mb-6 shadow-xl theme-shadow-primary text-white">
              <span className="text-3xl font-black italic tracking-tighter">DP</span>
           </div>
-          <h1 className="text-4xl font-black tracking-tighter mb-2 text-adaptive-main">
+          <h1 className="text-3xl sm:text-4xl font-black tracking-tighter mb-2 text-adaptive-main">
             DTE PORTAL
           </h1>
           <p className="text-adaptive-sub font-black text-[10px] uppercase tracking-[0.4em]">Enterprise Access Terminal</p>
@@ -66,7 +66,7 @@ const Login: React.FC = () => {
         <form onSubmit={handleSubmit} className="space-y-6">
           <div className="space-y-3">
             <label className="text-[10px] font-black text-adaptive-sub uppercase tracking-widest ml-1">Access Tier</label>
-            <div className="flex gap-2 p-1.5 bg-adaptive-nested rounded-2xl border border-white/5">
+            <div className="grid grid-cols-1 min-[380px]:grid-cols-3 gap-2 p-1.5 bg-adaptive-nested rounded-2xl border border-white/5">
               {(Object.values(UserRole)).map((r) => (
                 <button
                   key={r}
@@ -129,7 +129,7 @@ const Login: React.FC = () => {
             <Info size={14} className="theme-text-primary" />
             Quick Account Fill
           </div>
-          <div className="grid grid-cols-3 gap-3">
+          <div className="grid grid-cols-1 min-[420px]:grid-cols-3 gap-3">
             {[
               { label: 'Admin', email: 'admin@dtep.com', pass: 'admin12345', role: UserRole.ADMIN },
               { label: 'Evaluator', email: 'evaluator@dtep.com', pass: 'evaluator12345', role: UserRole.EVALUATOR },

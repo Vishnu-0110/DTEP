@@ -68,6 +68,9 @@ const Dashboard: React.FC = () => {
   const [chartData, setChartData] = useState<ChartPoint[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState('');
+  const [viewportWidth, setViewportWidth] = useState(() =>
+    typeof window === 'undefined' ? 1280 : window.innerWidth
+  );
 
   const buildStats = (role: string | undefined, totals: any) => {
     if (!role || !totals) return [];
@@ -189,6 +192,15 @@ const Dashboard: React.FC = () => {
       .finally(() => setIsLoading(false));
   }, [user]);
 
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+
+    const handleResize = () => setViewportWidth(window.innerWidth);
+    window.addEventListener('resize', handleResize);
+
+    return () => window.removeEventListener('resize', handleResize);
+  }, []);
+
   const primaryColor = getComputedStyle(document.documentElement).getPropertyValue('--primary').trim() || '59, 130, 246';
   const primaryFill = `rgb(${primaryColor})`;
   const gridColor = mode === 'dark' ? 'rgba(255,255,255,0.06)' : 'rgba(15,23,42,0.08)';
@@ -197,6 +209,8 @@ const Dashboard: React.FC = () => {
   const tooltipBg = mode === 'dark' ? '#0f172a' : '#ffffff';
   const tooltipText = mode === 'dark' ? '#f8fafc' : '#0f172a';
   const chartCopy = getChartCopy(user?.role);
+  const isCompactViewport = viewportWidth < 640;
+  const isTabletViewport = viewportWidth < 1024;
 
   return (
     <div className="space-y-6 lg:space-y-10 animate-in fade-in slide-in-from-bottom-4 duration-700">
@@ -266,10 +280,38 @@ const Dashboard: React.FC = () => {
               </div>
             ) : (
               <ResponsiveContainer width="100%" height="100%">
-                <BarChart data={chartData} margin={{ top: 18, right: 12, left: -8, bottom: 0 }}>
+                <BarChart
+                  data={chartData}
+                  margin={{
+                    top: 18,
+                    right: isCompactViewport ? 4 : 12,
+                    left: isCompactViewport ? -24 : -8,
+                    bottom: isCompactViewport ? 18 : 0
+                  }}
+                >
                   <CartesianGrid strokeDasharray="3 3" stroke={gridColor} vertical={false} />
-                  <XAxis dataKey="name" stroke={axisColor} fontSize={11} fontWeight="900" tickLine={false} axisLine={false} dy={10} />
-                  <YAxis allowDecimals={false} stroke={axisColor} fontSize={11} fontWeight="900" tickLine={false} axisLine={false} dx={-6} />
+                  <XAxis
+                    dataKey="name"
+                    stroke={axisColor}
+                    fontSize={isCompactViewport ? 10 : 11}
+                    fontWeight="900"
+                    tickLine={false}
+                    axisLine={false}
+                    dy={isCompactViewport ? 6 : 10}
+                    interval={0}
+                    angle={isCompactViewport && chartData.length > 3 ? -18 : 0}
+                    textAnchor={isCompactViewport && chartData.length > 3 ? 'end' : 'middle'}
+                    height={isCompactViewport && chartData.length > 3 ? 48 : 30}
+                  />
+                  <YAxis
+                    allowDecimals={false}
+                    stroke={axisColor}
+                    fontSize={isCompactViewport ? 10 : 11}
+                    fontWeight="900"
+                    tickLine={false}
+                    axisLine={false}
+                    width={isCompactViewport ? 28 : 36}
+                  />
                   <Tooltip
                     cursor={{ fill: gridColor }}
                     formatter={(value: number) => [`${value}`, 'Count']}
@@ -285,8 +327,10 @@ const Dashboard: React.FC = () => {
                     labelStyle={{ color: tooltipText, fontWeight: 800, marginBottom: '6px' }}
                     itemStyle={{ color: tooltipText }}
                   />
-                  <Bar dataKey="count" radius={[14, 14, 6, 6]} maxBarSize={58}>
-                    <LabelList dataKey="count" position="top" fill={labelColor} fontSize={11} fontWeight={900} />
+                  <Bar dataKey="count" radius={[14, 14, 6, 6]} maxBarSize={isTabletViewport ? 44 : 58}>
+                    {!isCompactViewport && (
+                      <LabelList dataKey="count" position="top" fill={labelColor} fontSize={11} fontWeight={900} />
+                    )}
                     {chartData.map((entry, index) => (
                       <Cell
                         key={`cell-${index}`}
