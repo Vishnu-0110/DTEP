@@ -28,7 +28,7 @@ const withApiSuffix = (value: string) => {
 };
 
 const resolveBaseUrl = () => {
-  const envBaseUrl = withApiSuffix((import.meta as any)?.env?.VITE_API_URL || '');
+  const envBaseUrl = withApiSuffix(import.meta.env.VITE_API_URL || '');
 
   if (typeof window === 'undefined') {
     return envBaseUrl || '/api';

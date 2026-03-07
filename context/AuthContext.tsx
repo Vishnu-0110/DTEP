@@ -55,13 +55,29 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       localStorage.setItem('dtep_user', JSON.stringify(userData));
     } catch (error: any) {
       let message = 'Login failed.';
+      const status = Number(error?.response?.status || 0);
+      const responseMessage = typeof error?.response?.data?.message === 'string'
+        ? error.response.data.message
+        : '';
+      const responseHeaders = error?.response?.headers || {};
+      const vercelError = String(responseHeaders['x-vercel-error'] || '').trim().toUpperCase();
+      const contentType = String(responseHeaders['content-type'] || '').trim().toLowerCase();
       
       if (!error.response) {
         message = 'Network error: backend is offline or the API URL is misconfigured.';
-      } else if (error.response.status === 401) {
-        message = error.response?.data?.message || 'Invalid credentials. Run "npm run seed" inside the backend folder to create Atlas users.';
+      } else if (
+        status === 404 ||
+        vercelError === 'NOT_FOUND' ||
+        contentType.includes('text/html') ||
+        contentType.includes('text/plain')
+      ) {
+        message = 'Backend API is not connected in production. Configure VITE_API_URL on Vercel or add a /api rewrite to your Render backend.';
+      } else if (status === 401) {
+        message = responseMessage || 'Invalid credentials. Run "npm run seed" inside the backend folder to create Atlas users.';
+      } else if (status >= 500) {
+        message = responseMessage || 'Backend error. Check the deployed backend logs and environment variables.';
       } else {
-        message = error.response.data?.message || 'Invalid credentials.';
+        message = responseMessage || `Login failed with status ${status}.`;
       }
       
       throw new Error(message);
