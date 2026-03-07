@@ -1,6 +1,7 @@
 
 import React from 'react';
 import { X, Terminal, ShieldCheck, Activity, AlertCircle, Database, Cpu, Globe } from 'lucide-react';
+import { useBodyScrollLock } from '../utils/useBodyScrollLock';
 
 interface LogEntry {
   id: string;
@@ -17,6 +18,8 @@ interface LogsModalProps {
 }
 
 const LogsModal: React.FC<LogsModalProps> = ({ isOpen, onClose }) => {
+  useBodyScrollLock(isOpen);
+
   if (!isOpen) return null;
 
   const logs: LogEntry[] = [
@@ -49,100 +52,102 @@ const LogsModal: React.FC<LogsModalProps> = ({ isOpen, onClose }) => {
   };
 
   return (
-    <div className="fixed inset-0 z-[100] flex items-center justify-center p-3 sm:p-6 lg:p-10">
+    <div className="fixed inset-0 z-[100] overflow-y-auto">
       <div 
         className="absolute inset-0 modal-overlay animate-in fade-in duration-300" 
         onClick={onClose}
       />
-      
-      <div className="relative modal-surface w-full max-w-5xl max-h-[92vh] rounded-[28px] sm:rounded-[40px] flex flex-col overflow-hidden animate-in zoom-in-95 duration-300">
+
+      <div className="relative z-10 flex min-h-full items-center justify-center p-3 sm:p-6 lg:p-10">
+        <div className="modal-surface w-full max-w-5xl max-h-[92vh] rounded-[28px] sm:rounded-[40px] flex flex-col overflow-hidden animate-in zoom-in-95 duration-300">
         {/* Header */}
-        <div className="p-4 sm:p-8 border-b border-white/5 flex items-start justify-between gap-4 shrink-0 bg-adaptive-nested">
-          <div className="flex items-center gap-3 sm:gap-5 min-w-0">
-            <div className="w-12 h-12 sm:w-14 sm:h-14 rounded-2xl bg-black/5 dark:bg-slate-900 border border-white/10 flex items-center justify-center theme-text-primary shadow-xl shrink-0">
-              <Terminal size={28} />
-            </div>
-            <div className="min-w-0">
-              <h2 className="text-xl sm:text-2xl font-black text-adaptive-main tracking-tighter uppercase leading-none">Kernel Logs</h2>
-              <p className="text-adaptive-sub text-[10px] font-black uppercase tracking-[0.2em] mt-2">System Audit & Real-time Event Stream</p>
-            </div>
-          </div>
-          <button 
-            onClick={onClose}
-            className="p-3 bg-black/5 dark:bg-white/5 hover:bg-black/10 dark:hover:bg-white/10 text-adaptive-sub hover:text-adaptive-main rounded-2xl transition-all active:scale-95 border border-white/10"
-          >
-            <X size={24} />
-          </button>
-        </div>
-
-        {/* Stats Row */}
-        <div className="px-4 sm:px-8 py-4 sm:py-5 border-b border-white/5 bg-adaptive-nested/50 flex flex-wrap gap-3 sm:gap-6 shrink-0">
-          <div className="flex items-center gap-2 text-[10px] font-black uppercase tracking-widest text-adaptive-sub">
-            <div className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></div>
-            System Health: Optimal
-          </div>
-          <div className="flex items-center gap-2 text-[10px] font-black uppercase tracking-widest text-adaptive-sub">
-            <Activity size={12} className="theme-text-primary" />
-            Events: {logs.length} Recorded
-          </div>
-          <div className="flex items-center gap-2 text-[10px] font-black uppercase tracking-widest text-adaptive-sub">
-            <ShieldCheck size={12} className="text-purple-500 dark:text-purple-400" />
-            Uptime: 99.98%
-          </div>
-        </div>
-
-        {/* Log Stream */}
-        <div className="flex-1 overflow-y-auto custom-scrollbar p-4 sm:p-8 space-y-4">
-          {logs.map((log) => (
-            <div 
-              key={log.id} 
-              className="glass-card bg-adaptive-nested p-4 sm:p-5 rounded-3xl border border-white/5 hover:theme-border-primary transition-all flex flex-col md:flex-row md:items-center gap-4 group shadow-sm hover:shadow-md"
-            >
-              <div className="flex items-center gap-4 shrink-0">
-                <span className="font-mono text-[10px] font-black text-adaptive-sub group-hover:theme-text-primary transition-colors uppercase">
-                  {log.id}
-                </span>
-                <span className={`px-3 py-1 rounded-lg text-[9px] font-black uppercase tracking-widest border ${getLevelColor(log.level)}`}>
-                  {log.level}
-                </span>
+          <div className="p-4 sm:p-8 border-b border-white/5 flex items-start justify-between gap-4 shrink-0 bg-adaptive-nested">
+            <div className="flex items-center gap-3 sm:gap-5 min-w-0">
+              <div className="w-12 h-12 sm:w-14 sm:h-14 rounded-2xl bg-black/5 dark:bg-slate-900 border border-white/10 flex items-center justify-center theme-text-primary shadow-xl shrink-0">
+                <Terminal size={28} />
               </div>
-              
-              <div className="flex-1 flex flex-col sm:flex-row sm:items-center gap-3">
-                <div className="flex items-center gap-2 px-3 py-1 bg-black/5 dark:bg-white/5 rounded-xl border border-white/5">
-                  <span className="theme-text-primary">{getCategoryIcon(log.category)}</span>
-                  <span className="text-[9px] font-black text-adaptive-sub uppercase tracking-tighter">{log.category}</span>
+              <div className="min-w-0">
+                <h2 className="text-xl sm:text-2xl font-black text-adaptive-main tracking-tighter uppercase leading-none">Kernel Logs</h2>
+                <p className="text-adaptive-sub text-[10px] font-black uppercase tracking-[0.2em] mt-2">System Audit & Real-time Event Stream</p>
+              </div>
+            </div>
+            <button 
+              onClick={onClose}
+              className="p-3 bg-black/5 dark:bg-white/5 hover:bg-black/10 dark:hover:bg-white/10 text-adaptive-sub hover:text-adaptive-main rounded-2xl transition-all active:scale-95 border border-white/10"
+            >
+              <X size={24} />
+            </button>
+          </div>
+
+          {/* Stats Row */}
+          <div className="px-4 sm:px-8 py-4 sm:py-5 border-b border-white/5 bg-adaptive-nested/50 flex flex-wrap gap-3 sm:gap-6 shrink-0">
+            <div className="flex items-center gap-2 text-[10px] font-black uppercase tracking-widest text-adaptive-sub">
+              <div className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></div>
+              System Health: Optimal
+            </div>
+            <div className="flex items-center gap-2 text-[10px] font-black uppercase tracking-widest text-adaptive-sub">
+              <Activity size={12} className="theme-text-primary" />
+              Events: {logs.length} Recorded
+            </div>
+            <div className="flex items-center gap-2 text-[10px] font-black uppercase tracking-widest text-adaptive-sub">
+              <ShieldCheck size={12} className="text-purple-500 dark:text-purple-400" />
+              Uptime: 99.98%
+            </div>
+          </div>
+
+          {/* Log Stream */}
+          <div className="flex-1 overflow-y-auto custom-scrollbar p-4 sm:p-8 space-y-4">
+            {logs.map((log) => (
+              <div 
+                key={log.id} 
+                className="glass-card bg-adaptive-nested p-4 sm:p-5 rounded-3xl border border-white/5 hover:theme-border-primary transition-all flex flex-col md:flex-row md:items-center gap-4 group shadow-sm hover:shadow-md"
+              >
+                <div className="flex items-center gap-4 shrink-0">
+                  <span className="font-mono text-[10px] font-black text-adaptive-sub group-hover:theme-text-primary transition-colors uppercase">
+                    {log.id}
+                  </span>
+                  <span className={`px-3 py-1 rounded-lg text-[9px] font-black uppercase tracking-widest border ${getLevelColor(log.level)}`}>
+                    {log.level}
+                  </span>
                 </div>
-                <div className="flex-1">
-                  <p className="text-sm font-bold text-adaptive-main leading-tight">{log.event}</p>
-                  <p className="text-[11px] text-adaptive-sub font-medium mt-0.5 line-clamp-1 group-hover:line-clamp-none transition-all duration-300">
-                    {log.details}
+                
+                <div className="flex-1 flex flex-col sm:flex-row sm:items-center gap-3">
+                  <div className="flex items-center gap-2 px-3 py-1 bg-black/5 dark:bg-white/5 rounded-xl border border-white/5">
+                    <span className="theme-text-primary">{getCategoryIcon(log.category)}</span>
+                    <span className="text-[9px] font-black text-adaptive-sub uppercase tracking-tighter">{log.category}</span>
+                  </div>
+                  <div className="flex-1">
+                    <p className="text-sm font-bold text-adaptive-main leading-tight">{log.event}</p>
+                    <p className="text-[11px] text-adaptive-sub font-medium mt-0.5 line-clamp-1 group-hover:line-clamp-none transition-all duration-300">
+                      {log.details}
+                    </p>
+                  </div>
+                </div>
+
+                <div className="shrink-0 text-left md:text-right">
+                  <p className="font-mono text-[10px] font-black text-adaptive-sub uppercase">
+                    {new Date(log.timestamp).toLocaleTimeString()}
+                  </p>
+                  <p className="text-[8px] font-black text-adaptive-sub opacity-50 uppercase tracking-widest mt-0.5">
+                    {new Date(log.timestamp).toLocaleDateString()}
                   </p>
                 </div>
               </div>
+            ))}
+          </div>
 
-              <div className="shrink-0 text-left md:text-right">
-                <p className="font-mono text-[10px] font-black text-adaptive-sub uppercase">
-                  {new Date(log.timestamp).toLocaleTimeString()}
-                </p>
-                <p className="text-[8px] font-black text-adaptive-sub opacity-50 uppercase tracking-widest mt-0.5">
-                  {new Date(log.timestamp).toLocaleDateString()}
-                </p>
-              </div>
-            </div>
-          ))}
-        </div>
-
-        {/* Footer */}
-        <div className="p-4 sm:p-6 bg-adaptive-nested border-t border-white/5 flex flex-col sm:flex-row justify-between items-center shrink-0 gap-4">
-          <p className="text-[9px] font-black text-adaptive-sub uppercase tracking-widest italic opacity-60 text-center sm:text-left">
-            End of stream. Logs are immutable and retained for 90 days.
-          </p>
-          <button 
-            className="text-[10px] font-black theme-text-primary uppercase tracking-widest hover:brightness-110 active:scale-95 transition-all"
-            onClick={() => window.print()}
-          >
-            Export Archive
-          </button>
+          {/* Footer */}
+          <div className="p-4 sm:p-6 bg-adaptive-nested border-t border-white/5 flex flex-col sm:flex-row justify-between items-center shrink-0 gap-4">
+            <p className="text-[9px] font-black text-adaptive-sub uppercase tracking-widest italic opacity-60 text-center sm:text-left">
+              End of stream. Logs are immutable and retained for 90 days.
+            </p>
+            <button 
+              className="text-[10px] font-black theme-text-primary uppercase tracking-widest hover:brightness-110 active:scale-95 transition-all"
+              onClick={() => window.print()}
+            >
+              Export Archive
+            </button>
+          </div>
         </div>
       </div>
     </div>

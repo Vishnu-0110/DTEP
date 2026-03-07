@@ -4,6 +4,7 @@ import { Outlet, Link, useNavigate, useLocation } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { useTheme, ThemeType } from '../context/ThemeContext';
 import api from '../services/api';
+import { useBodyScrollLock } from '../utils/useBodyScrollLock';
 import StudentRealtimeNotifier, {
   EvaluatorSubmissionNotification,
   StudentTaskNotification
@@ -111,6 +112,8 @@ const Layout: React.FC = () => {
   const unreadNotificationCount = isStudent
     ? unreadStudentTaskCount
     : (isEvaluator ? unreadEvaluatorSubmissionCount : 0);
+
+  useBodyScrollLock(isSidebarOpen);
 
   const handleLogout = () => {
     logout();
@@ -352,7 +355,7 @@ const Layout: React.FC = () => {
   return (
     <div className="min-h-screen flex bg-app text-adaptive-main overflow-x-hidden transition-colors duration-300">
       {/* Sidebar - Mobile & Desktop */}
-      <aside className={`fixed inset-y-0 left-0 z-50 w-[85vw] max-w-[280px] lg:w-72 glass-card transform transition-transform duration-500 ease-in-out lg:translate-x-0 ${isSidebarOpen ? 'translate-x-0 shadow-2xl' : '-translate-x-full shadow-none'} border-r border-white/5`}>
+      <aside className={`fixed inset-y-0 left-0 z-50 w-[85vw] max-w-[280px] lg:w-72 glass-card overscroll-contain transform transition-transform duration-500 ease-in-out lg:translate-x-0 ${isSidebarOpen ? 'translate-x-0 shadow-2xl' : '-translate-x-full shadow-none'} border-r border-white/5`}>
         <div className="flex flex-col h-full">
           <div className="p-6 lg:p-8 flex items-center justify-between">
             <Link to="/dashboard" onClick={() => setIsSidebarOpen(false)}>
@@ -366,7 +369,7 @@ const Layout: React.FC = () => {
             </button>
           </div>
 
-          <nav className="flex-1 px-4 lg:px-6 space-y-1.5 mt-4 overflow-y-auto custom-scrollbar">
+          <nav className="flex-1 px-4 lg:px-6 space-y-1.5 mt-4 overflow-y-auto overscroll-contain custom-scrollbar">
             {filteredNavItems.map((item) => (
               <Link
                 key={item.path}
