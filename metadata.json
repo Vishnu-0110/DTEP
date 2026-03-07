@@ -1,0 +1,8 @@
+{
+  "name": "Digital Task Evaluation Portal",
+  "description": "A comprehensive task management and evaluation system with role-based access for Admins, Evaluators, and Students. Features task assignment, secure submissions, AI-assisted feedback, and performance tracking.",
+  "requestFramePermissions": [
+    "camera",
+    "microphone"
+  ]
+}
