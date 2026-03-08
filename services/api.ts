@@ -8,7 +8,7 @@ const trimTrailingSlash = (value: string) => value.replace(/\/+$/, '');
 const normalizeBaseUrl = (value: string) => {
   const trimmed = trimTrailingSlash(String(value || '').trim());
   if (!trimmed) return '';
-
+// hai //
   try {
     const parsed = new URL(trimmed);
     const path = parsed.pathname === '/' ? '' : parsed.pathname;
