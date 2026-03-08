@@ -1,7 +1,7 @@
 
 import React, { useEffect, useState } from 'react';
 import { X, Calendar, Edit3, Type } from 'lucide-react';
-import { useBodyScrollLock } from '../utils/useBodyScrollLock';
+import ModalShell from './ModalShell';
 
 const INITIAL_FORM_DATA = {
   title: '',
@@ -18,8 +18,6 @@ interface TaskModalProps {
 const TaskModal: React.FC<TaskModalProps> = ({ isOpen, onClose, onSubmit }) => {
   const [formData, setFormData] = useState(INITIAL_FORM_DATA);
 
-  useBodyScrollLock(isOpen);
-
   useEffect(() => {
     if (!isOpen) {
       setFormData(INITIAL_FORM_DATA);
@@ -34,17 +32,14 @@ const TaskModal: React.FC<TaskModalProps> = ({ isOpen, onClose, onSubmit }) => {
   };
 
   return (
-    <div className="fixed inset-0 z-[60] overflow-y-auto">
+    <ModalShell
+      isOpen={isOpen}
+      onClose={handleClose}
+    >
       <div
-        className="absolute inset-0 z-0"
-        onClick={handleClose}
-        style={{ background: 'rgba(15, 23, 42, 0.54)', backdropFilter: 'blur(10px)' }}
-      ></div>
-      <div className="relative z-10 flex min-h-full items-center justify-center p-3 sm:p-4">
-        <div
-          className="modal-surface rounded-[24px] p-4 sm:p-5 lg:p-6 w-full max-w-md max-h-[84vh] overflow-y-auto custom-scrollbar animate-in zoom-in duration-300 border border-white/15"
-          style={{ background: 'rgba(var(--bg-sidebar), 0.9)', backdropFilter: 'blur(14px)' }}
-        >
+        className="modal-surface rounded-[24px] p-4 sm:p-5 lg:p-6 w-full max-w-md max-h-[calc(100dvh-2rem)] sm:max-h-[84vh] overflow-y-auto custom-scrollbar animate-in zoom-in duration-300 border border-white/15"
+        style={{ background: 'rgba(var(--bg-sidebar), 0.9)', backdropFilter: 'blur(14px)' }}
+      >
           <div className="flex justify-between items-start mb-5">
             <div className="flex items-center gap-3">
                <div className="w-10 h-10 rounded-xl theme-bg-primary flex items-center justify-center text-white shadow-xl theme-shadow-primary">
@@ -110,9 +105,8 @@ const TaskModal: React.FC<TaskModalProps> = ({ isOpen, onClose, onSubmit }) => {
               <button type="submit" className="flex-1 btn-primary rounded-xl py-3 font-black transition-all text-[9px] uppercase tracking-[0.2em] active:scale-95 order-1 sm:order-2">Publish Assignment</button>
             </div>
           </form>
-        </div>
       </div>
-    </div>
+    </ModalShell>
   );
 };
 

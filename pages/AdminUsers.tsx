@@ -4,7 +4,7 @@ import { UserRole } from '../types';
 import { Plus, Search, Trash2, Mail, User as UserIcon, Loader2, ShieldAlert, AlertCircle, Building, CheckCircle, Wrench } from 'lucide-react';
 import api from '../services/api';
 import { useAuth } from '../context/AuthContext';
-import { useBodyScrollLock } from '../utils/useBodyScrollLock';
+import ModalShell from '../components/ModalShell';
 
 const getRequestErrorMessage = (error: any, fallback: string) => {
   if (error?.response?.status === 401) {
@@ -44,8 +44,6 @@ const AdminUsers: React.FC = () => {
     role: UserRole.STUDENT,
     department: ''
   });
-
-  useBodyScrollLock(isModalOpen);
 
   const fetchUsers = async () => {
     setIsLoading(true);
@@ -423,93 +421,95 @@ const AdminUsers: React.FC = () => {
         )}
       </div>
 
-      {isModalOpen && (
-        <div className="fixed inset-0 z-[60] overflow-y-auto">
-          <div className="absolute inset-0 modal-overlay" onClick={() => !isSubmitting && setIsModalOpen(false)}></div>
-          <div className="relative z-10 flex min-h-full items-center justify-center p-4">
-            <div className="modal-surface rounded-3xl p-6 sm:p-8 w-full max-w-md max-h-[90vh] overflow-y-auto custom-scrollbar animate-in zoom-in-95 duration-300">
-              <h2 className="text-xl font-black text-adaptive-main tracking-tighter mb-6 uppercase">Provision Account</h2>
-              
-              <form className="space-y-4" onSubmit={handleCreateUser}>
-                <div className="space-y-1">
-                  <label className="text-[9px] font-black text-adaptive-sub uppercase tracking-widest ml-1">Entity Name</label>
-                  <input 
-                    type="text" 
-                    required
-                    value={formData.name}
-                    onChange={e => setFormData({...formData, name: e.target.value})}
-                    className="w-full surface-input rounded-xl py-3 px-4 transition-all font-medium text-sm" 
-                  />
-                </div>
-
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                  <div className="space-y-1">
-                    <label className="text-[9px] font-black text-adaptive-sub uppercase tracking-widest ml-1">Classification</label>
-                    <select 
-                      value={formData.role}
-                      onChange={e => setFormData({...formData, role: e.target.value as UserRole})}
-                      className="w-full surface-input rounded-xl py-3 px-4 transition-all font-bold text-[10px] uppercase"
-                    >
-                      <option value={UserRole.STUDENT}>Student</option>
-                      <option value={UserRole.EVALUATOR}>Evaluator</option>
-                      <option value={UserRole.ADMIN}>Admin</option>
-                    </select>
-                  </div>
-                  <div className="space-y-1">
-                    <label className="text-[9px] font-black text-adaptive-sub uppercase tracking-widest ml-1">Department</label>
-                    <input 
-                      type="text" 
-                      value={formData.department}
-                      onChange={e => setFormData({...formData, department: e.target.value})}
-                      className="w-full surface-input rounded-xl py-3 px-4 transition-all font-medium text-sm" 
-                    />
-                  </div>
-                </div>
-
-                <div className="space-y-1">
-                  <label className="text-[9px] font-black text-adaptive-sub uppercase tracking-widest ml-1">Email Endpoint</label>
-                  <input 
-                    type="email" 
-                    required
-                    value={formData.email}
-                    onChange={e => setFormData({...formData, email: e.target.value})}
-                    className="w-full surface-input rounded-xl py-3 px-4 transition-all font-medium text-sm" 
-                  />
-                </div>
-
-                <div className="space-y-1">
-                  <label className="text-[9px] font-black text-adaptive-sub uppercase tracking-widest ml-1">Security Phrase</label>
-                  <input 
-                    type="password" 
-                    required
-                    value={formData.password}
-                    onChange={e => setFormData({...formData, password: e.target.value})}
-                    className="w-full surface-input rounded-xl py-3 px-4 transition-all font-medium text-sm" 
-                  />
-                </div>
-
-                <div className="flex flex-col sm:flex-row gap-3 pt-4">
-                  <button 
-                    type="button" 
-                    disabled={isSubmitting}
-                    onClick={() => setIsModalOpen(false)} 
-                    className="flex-1 py-3.5 btn-secondary rounded-xl font-black text-[9px] uppercase tracking-widest transition-all"
-                  >
-                    Discard
-                  </button>
-                  <button 
-                    type="submit" 
-                    disabled={isSubmitting}
-                    className="flex-1 btn-primary rounded-xl py-3.5 transition-all flex items-center justify-center gap-2 px-6 uppercase text-[9px] tracking-widest active:scale-95"
-                  >
-                    {isSubmitting ? <Loader2 size={16} className="animate-spin" /> : 'Confirm Build'}
-                  </button>
-                </div>
-              </form>
+      <ModalShell
+        isOpen={isModalOpen}
+        onClose={() => {
+          if (!isSubmitting) {
+            setIsModalOpen(false);
+          }
+        }}
+      >
+        <div className="modal-surface rounded-3xl p-6 sm:p-8 w-full max-w-md max-h-[calc(100dvh-2rem)] sm:max-h-[90vh] overflow-y-auto custom-scrollbar animate-in zoom-in-95 duration-300">
+          <h2 className="text-xl font-black text-adaptive-main tracking-tighter mb-6 uppercase">Provision Account</h2>
+          
+          <form className="space-y-4" onSubmit={handleCreateUser}>
+            <div className="space-y-1">
+              <label className="text-[9px] font-black text-adaptive-sub uppercase tracking-widest ml-1">Entity Name</label>
+              <input 
+                type="text" 
+                required
+                value={formData.name}
+                onChange={e => setFormData({...formData, name: e.target.value})}
+                className="w-full surface-input rounded-xl py-3 px-4 transition-all font-medium text-sm" 
+              />
             </div>
-          </div>
+
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+              <div className="space-y-1">
+                <label className="text-[9px] font-black text-adaptive-sub uppercase tracking-widest ml-1">Classification</label>
+                <select 
+                  value={formData.role}
+                  onChange={e => setFormData({...formData, role: e.target.value as UserRole})}
+                  className="w-full surface-input rounded-xl py-3 px-4 transition-all font-bold text-[10px] uppercase"
+                >
+                  <option value={UserRole.STUDENT}>Student</option>
+                  <option value={UserRole.EVALUATOR}>Evaluator</option>
+                  <option value={UserRole.ADMIN}>Admin</option>
+                </select>
+              </div>
+              <div className="space-y-1">
+                <label className="text-[9px] font-black text-adaptive-sub uppercase tracking-widest ml-1">Department</label>
+                <input 
+                  type="text" 
+                  value={formData.department}
+                  onChange={e => setFormData({...formData, department: e.target.value})}
+                  className="w-full surface-input rounded-xl py-3 px-4 transition-all font-medium text-sm" 
+                />
+              </div>
+            </div>
+
+            <div className="space-y-1">
+              <label className="text-[9px] font-black text-adaptive-sub uppercase tracking-widest ml-1">Email Endpoint</label>
+              <input 
+                type="email" 
+                required
+                value={formData.email}
+                onChange={e => setFormData({...formData, email: e.target.value})}
+                className="w-full surface-input rounded-xl py-3 px-4 transition-all font-medium text-sm" 
+              />
+            </div>
+
+            <div className="space-y-1">
+              <label className="text-[9px] font-black text-adaptive-sub uppercase tracking-widest ml-1">Security Phrase</label>
+              <input 
+                type="password" 
+                required
+                value={formData.password}
+                onChange={e => setFormData({...formData, password: e.target.value})}
+                className="w-full surface-input rounded-xl py-3 px-4 transition-all font-medium text-sm" 
+              />
+            </div>
+
+            <div className="flex flex-col sm:flex-row gap-3 pt-4">
+              <button 
+                type="button" 
+                disabled={isSubmitting}
+                onClick={() => setIsModalOpen(false)} 
+                className="flex-1 py-3.5 btn-secondary rounded-xl font-black text-[9px] uppercase tracking-widest transition-all"
+              >
+                Discard
+              </button>
+              <button 
+                type="submit" 
+                disabled={isSubmitting}
+                className="flex-1 btn-primary rounded-xl py-3.5 transition-all flex items-center justify-center gap-2 px-6 uppercase text-[9px] tracking-widest active:scale-95"
+              >
+                {isSubmitting ? <Loader2 size={16} className="animate-spin" /> : 'Confirm Build'}
+              </button>
+            </div>
+          </form>
         </div>
-      )}
+      </ModalShell>
     </div>
   );
 };

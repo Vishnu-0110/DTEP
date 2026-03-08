@@ -1,7 +1,7 @@
 
 import React from 'react';
 import { X, Terminal, ShieldCheck, Activity, AlertCircle, Database, Cpu, Globe } from 'lucide-react';
-import { useBodyScrollLock } from '../utils/useBodyScrollLock';
+import ModalShell from './ModalShell';
 
 interface LogEntry {
   id: string;
@@ -18,8 +18,6 @@ interface LogsModalProps {
 }
 
 const LogsModal: React.FC<LogsModalProps> = ({ isOpen, onClose }) => {
-  useBodyScrollLock(isOpen);
-
   if (!isOpen) return null;
 
   const logs: LogEntry[] = [
@@ -52,14 +50,14 @@ const LogsModal: React.FC<LogsModalProps> = ({ isOpen, onClose }) => {
   };
 
   return (
-    <div className="fixed inset-0 z-[100] overflow-y-auto">
-      <div 
-        className="absolute inset-0 modal-overlay animate-in fade-in duration-300" 
-        onClick={onClose}
-      />
-
-      <div className="relative z-10 flex min-h-full items-center justify-center p-3 sm:p-6 lg:p-10">
-        <div className="modal-surface w-full max-w-5xl max-h-[92vh] rounded-[28px] sm:rounded-[40px] flex flex-col overflow-hidden animate-in zoom-in-95 duration-300">
+    <ModalShell
+      isOpen={isOpen}
+      onClose={onClose}
+      zIndexClassName="z-[100]"
+      viewportClassName="p-3 pt-4 pb-4 sm:p-6 lg:p-10"
+      overlayClassName="modal-overlay animate-in fade-in duration-300"
+    >
+      <div className="modal-surface w-full max-w-5xl max-h-[calc(100dvh-2rem)] sm:max-h-[92vh] rounded-[28px] sm:rounded-[40px] flex flex-col overflow-hidden animate-in zoom-in-95 duration-300">
         {/* Header */}
           <div className="p-4 sm:p-8 border-b border-white/5 flex items-start justify-between gap-4 shrink-0 bg-adaptive-nested">
             <div className="flex items-center gap-3 sm:gap-5 min-w-0">
@@ -148,9 +146,8 @@ const LogsModal: React.FC<LogsModalProps> = ({ isOpen, onClose }) => {
               Export Archive
             </button>
           </div>
-        </div>
       </div>
-    </div>
+    </ModalShell>
   );
 };
 
