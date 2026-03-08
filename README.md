@@ -29,14 +29,11 @@ The frontend uses `HashRouter`, so it can be hosted on static platforms without 
    - `JWT_SECRET`
    - `ALLOWED_ORIGINS`
    - `GEMINI_API_KEY` if you want AI grading enabled
-4. Start the backend:
-   ```bash
-   npm run backend:dev
-   ```
-5. Start the frontend:
+4. Start both services together:
    ```bash
    npm run dev
    ```
+   If you only need the frontend, use `npm run frontend:dev`.
 
 ## Deployment Checklist
 
