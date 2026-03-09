@@ -47,6 +47,7 @@ const LAST_EVALUATOR_SUBMISSION_KEY = 'dtep_last_evaluator_submission_at';
 const LAST_STUDENT_MAINTENANCE_KEY = 'dtep_last_student_maintenance_notification_at';
 const LAST_EVALUATOR_MAINTENANCE_KEY = 'dtep_last_evaluator_maintenance_notification_at';
 const NOTIFICATION_PROMPT_DISMISSED_KEY = 'dtep_notification_prompt_dismissed';
+const POLL_LOOKBACK_MS = 10 * 60 * 1000;
 
 const getPrimaryNotificationKey = (role: 'student' | 'evaluator') =>
   role === 'student' ? LAST_STUDENT_TASK_KEY : LAST_EVALUATOR_SUBMISSION_KEY;
@@ -73,6 +74,17 @@ const formatDueDate = (deadline: string) => {
 
 const supportsBrowserNotifications = () =>
   typeof window !== 'undefined' && 'Notification' in window;
+
+const getSafeSinceIso = (rawValue: string | null, fallbackIso: string) => {
+  const parsed = new Date(String(rawValue || ''));
+  if (!Number.isFinite(parsed.getTime())) return fallbackIso;
+
+  const nowMs = Date.now();
+  const parsedMs = parsed.getTime();
+  if (parsedMs > nowMs + 60 * 1000) return fallbackIso;
+
+  return new Date(parsedMs).toISOString();
+};
 
 const StudentRealtimeNotifier: React.FC<StudentRealtimeNotifierProps> = ({
   onTaskNotification,
@@ -151,9 +163,13 @@ const StudentRealtimeNotifier: React.FC<StudentRealtimeNotifierProps> = ({
       return;
     }
 
-    const nowIso = new Date().toISOString();
-    lastPrimaryAtRef.current = localStorage.getItem(getPrimaryNotificationKey(activeRole)) || nowIso;
-    lastMaintenanceAtRef.current = localStorage.getItem(getMaintenanceNotificationKey(activeRole)) || nowIso;
+    const fallbackIso = new Date(Date.now() - POLL_LOOKBACK_MS).toISOString();
+    const primaryKey = getPrimaryNotificationKey(activeRole);
+    const maintenanceKey = getMaintenanceNotificationKey(activeRole);
+    lastPrimaryAtRef.current = getSafeSinceIso(localStorage.getItem(primaryKey), fallbackIso);
+    lastMaintenanceAtRef.current = getSafeSinceIso(localStorage.getItem(maintenanceKey), fallbackIso);
+    localStorage.setItem(primaryKey, lastPrimaryAtRef.current);
+    localStorage.setItem(maintenanceKey, lastMaintenanceAtRef.current);
 
     let isCancelled = false;
     let timeoutId: number | null = null;

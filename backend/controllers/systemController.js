@@ -7,7 +7,16 @@ const GLOBAL_KEY = 'global';
 const parseDateQuery = (rawValue) => {
   if (!rawValue) return null;
   const parsed = new Date(String(rawValue));
-  return Number.isFinite(parsed.getTime()) ? parsed : null;
+  if (!Number.isFinite(parsed.getTime())) return null;
+
+  const nowMs = Date.now();
+  const parsedMs = parsed.getTime();
+  // Guard against client clock skew/future timestamps that would suppress all notifications.
+  if (parsedMs > nowMs + 60 * 1000) {
+    return new Date(nowMs);
+  }
+
+  return parsed;
 };
 
 const toMaintenancePayload = (settingDoc) => {

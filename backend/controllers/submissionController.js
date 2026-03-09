@@ -220,6 +220,20 @@ const normalizeStoredSubmissionPath = (submissionDoc) => {
   }
 
   const normalizedRelativePath = rawPath.replace(/^uploads[\\/]+/i, '');
+  const candidateRoots = Array.from(new Set([
+    uploadRoot,
+    path.resolve(__dirname, '..', 'uploads'),
+    path.resolve(process.cwd(), 'uploads'),
+    '/app/uploads',
+  ]));
+
+  for (const rootPath of candidateRoots) {
+    const candidate = path.resolve(rootPath, normalizedRelativePath);
+    if (fs.existsSync(candidate)) {
+      return candidate;
+    }
+  }
+
   return path.resolve(uploadRoot, normalizedRelativePath);
 };
 
@@ -566,7 +580,9 @@ exports.viewSubmissionFile = async (req, res) => {
     }
 
     if (!fs.existsSync(resolvedPath)) {
-      return res.status(404).json({ message: 'Submission file not found.' });
+      return res.status(404).json({
+        message: 'Submission file not found on server storage. Re-upload may be required after redeploy if uploads were on ephemeral disk.',
+      });
     }
 
     res.setHeader('Content-Type', getMimeTypeForPath(resolvedPath));
