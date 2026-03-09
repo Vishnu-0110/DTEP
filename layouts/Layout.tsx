@@ -18,7 +18,6 @@ import {
   LogOut, 
   Menu, 
   X, 
-  Bell,
   ChevronRight,
   Palette,
   Check,
@@ -551,12 +550,7 @@ const Layout: React.FC = () => {
                     </div>
                 )}
               </div>
-            ) : (
-              <button className="relative p-2 sm:p-2.5 text-adaptive-sub hover:theme-text-primary transition-all bg-black/5 dark:bg-white/5 rounded-xl border border-white/5 active:scale-95">
-                <Bell size={18} />
-                <span className="absolute top-2 right-2 w-1.5 h-1.5 theme-bg-primary rounded-full border border-app animate-pulse"></span>
-              </button>
-            )}
+            ) : null}
             
             <div className="flex min-w-0 items-center gap-2 sm:gap-3 bg-black/5 dark:bg-white/5 pl-1.5 sm:pl-4 pr-1 py-1 rounded-2xl border border-white/5">
                 <div className="text-right hidden sm:block">
