@@ -18,6 +18,7 @@ import {
   LogOut, 
   Menu, 
   X, 
+  Bell,
   ChevronRight,
   Palette,
   Check,
