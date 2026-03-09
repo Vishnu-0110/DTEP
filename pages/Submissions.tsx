@@ -70,6 +70,39 @@ const Submissions: React.FC = () => {
     improvements: Array.isArray(report?.improvements) ? report.improvements : [],
   });
 
+  const extractErrorMessage = async (error: any) => {
+    const blobData = error?.response?.data;
+    if (blobData instanceof Blob) {
+      try {
+        const rawText = await blobData.text();
+        if (!rawText) return 'Failed to open document.';
+        try {
+          const parsed = JSON.parse(rawText);
+          if (typeof parsed?.message === 'string' && parsed.message.trim()) {
+            return parsed.message.trim();
+          }
+        } catch (_) {
+          // Not JSON; keep the raw fallback below.
+        }
+        return rawText.trim();
+      } catch (_) {
+        // Fall back below.
+      }
+    }
+
+    const responseMessage = error?.response?.data?.message;
+    if (typeof responseMessage === 'string' && responseMessage.trim()) {
+      return responseMessage.trim();
+    }
+
+    const errMessage = error?.message;
+    if (typeof errMessage === 'string' && errMessage.trim()) {
+      return errMessage.trim();
+    }
+
+    return 'Failed to open document.';
+  };
+
   const fetchData = async () => {
     setIsLoading(true);
     try {
@@ -238,14 +271,35 @@ const Submissions: React.FC = () => {
         responseType: 'blob'
       });
 
-      const objectUrl = window.URL.createObjectURL(response.data);
-      const openedWindow = window.open(objectUrl, '_blank', 'noopener,noreferrer');
+      const contentType = String(response.headers?.['content-type'] || '').toLowerCase();
+      const contentDisposition = String(response.headers?.['content-disposition'] || '');
+      const fileNameFromHeaderMatch = contentDisposition.match(/filename\*?=(?:UTF-8''|")?([^\";]+)/i);
+      const fileNameFromHeader = fileNameFromHeaderMatch?.[1]
+        ? decodeURIComponent(fileNameFromHeaderMatch[1]).replace(/^"+|"+$/g, '').trim()
+        : '';
+      const fallbackFileName = String(
+        fileNameFromHeader || activeSubmission.fileName || `submission-${activeSubmission._id}`
+      ).trim();
+      const isPdf = contentType.includes('application/pdf') || fallbackFileName.toLowerCase().endsWith('.pdf');
 
-      if (!openedWindow) {
+      const objectUrl = window.URL.createObjectURL(response.data);
+      if (isPdf) {
+        const openedWindow = window.open(objectUrl, '_blank', 'noopener,noreferrer');
+
+        if (!openedWindow) {
+          const anchor = document.createElement('a');
+          anchor.href = objectUrl;
+          anchor.target = '_blank';
+          anchor.rel = 'noopener noreferrer';
+          document.body.appendChild(anchor);
+          anchor.click();
+          anchor.remove();
+        }
+      } else {
+        // Most browsers cannot render DOC/DOCX directly in a protected blob URL; download instead.
         const anchor = document.createElement('a');
         anchor.href = objectUrl;
-        anchor.target = '_blank';
-        anchor.rel = 'noopener noreferrer';
+        anchor.download = fallbackFileName;
         document.body.appendChild(anchor);
         anchor.click();
         anchor.remove();
@@ -253,9 +307,10 @@ const Submissions: React.FC = () => {
 
       window.setTimeout(() => {
         window.URL.revokeObjectURL(objectUrl);
-      }, 60000);
+      }, 300000);
     } catch (err: any) {
-      alert(err.response?.data?.message || 'Failed to open document.');
+      const message = await extractErrorMessage(err);
+      alert(message);
     } finally {
       setIsViewing(false);
     }
