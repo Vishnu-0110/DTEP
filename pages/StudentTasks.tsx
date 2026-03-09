@@ -198,7 +198,13 @@ const StudentTasks: React.FC = () => {
         setSelectedFile(null);
         setAnswerText('');
       } else {
-        alert(err.response?.data?.message || 'Upload failed. Ensure backend is running.');
+        const errorCode = String(err?.code || '').trim().toUpperCase();
+        const errorMessage = String(err?.message || '').trim().toLowerCase();
+        const isTimeout = errorCode === 'ECONNABORTED' || errorMessage.includes('timeout');
+        const fallbackMessage = isTimeout
+          ? 'Upload timed out while backend was processing. Please retry once.'
+          : 'Upload failed. Ensure backend is running.';
+        alert(err.response?.data?.message || fallbackMessage);
       }
       setUploading(false);
     }

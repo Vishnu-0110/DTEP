@@ -35,6 +35,55 @@ const cleanupUploadedFile = (filePath) => {
   }
 };
 
+const runPostSubmissionAnalysis = async ({
+  submissionId,
+  taskDescription,
+  answerText,
+  filePath,
+  originalFileName,
+  isPdfUpload,
+}) => {
+  try {
+    const submission = await Submission.findById(submissionId);
+    if (!submission) return;
+
+    let derivedAnswer = String(answerText || '').trim();
+
+    if (!derivedAnswer && isPdfUpload && filePath) {
+      try {
+        derivedAnswer = String(await extractPDFText(filePath) || '').trim();
+      } catch (extractError) {
+        console.warn(`PDF text extraction failed for submission ${submissionId}: ${extractError.message}`);
+      }
+    }
+
+    if (derivedAnswer && !String(submission.answer || '').trim()) {
+      submission.answer = derivedAnswer;
+    }
+
+    const rawAnswerForEvaluation = derivedAnswer || `Student submitted file: ${originalFileName}`;
+    const answerForEvaluation = rawAnswerForEvaluation.slice(0, 20000);
+    const aiResult = await evaluateAnswer(taskDescription, answerForEvaluation);
+
+    submission.aiMarks = aiResult.marks;
+    submission.aiFeedback = aiResult.feedback;
+    submission.missingPoints = aiResult.missingPoints;
+    submission.aiEvaluatedAt = new Date();
+    submission.aiModel = aiResult.model;
+    submission.aiRawResponse = aiResult.raw;
+    submission.evaluationDetails = {
+      ...(submission.evaluationDetails || {}),
+      aiMarks: aiResult.marks,
+      aiFeedback: aiResult.feedback,
+      missingPoints: aiResult.missingPoints,
+    };
+
+    await submission.save();
+  } catch (analysisError) {
+    console.error(`Background AI evaluation failed for submission ${submissionId}: ${analysisError.message}`);
+  }
+};
+
 const toClientSubmission = (submissionDoc) => {
   const item = submissionDoc.toObject ? submissionDoc.toObject() : submissionDoc;
 
@@ -204,17 +253,6 @@ exports.submitTask = async (req, res) => {
     const answerText = String(req.body.answer || req.body.answerText || '').trim();
     const normalizedPath = String(req.file.filename || '').trim();
     const isPdfUpload = String(req.file.originalname || '').toLowerCase().endsWith('.pdf');
-    let extractedPdfText = '';
-
-    if (isPdfUpload) {
-      try {
-        extractedPdfText = await extractPDFText(req.file.path);
-      } catch (extractError) {
-        console.warn(`PDF text extraction failed for ${normalizedPath}: ${extractError.message}`);
-      }
-    }
-
-    const answerForStorage = answerText || extractedPdfText || '';
 
     let submission = await findExistingSubmission();
 
@@ -233,34 +271,21 @@ exports.submitTask = async (req, res) => {
       userId: req.user._id,
       submissionFile: normalizedPath,
       fileName: req.file.originalname,
-      answer: answerForStorage,
+      answer: answerText,
       submittedAt: new Date(),
     });
 
-    try {
-      const rawAnswerForEvaluation = answerText || extractedPdfText || `Student submitted file: ${req.file.originalname}`;
-      const answerForEvaluation = rawAnswerForEvaluation.slice(0, 20000);
-      const aiResult = await evaluateAnswer(task.description, answerForEvaluation);
-
-      submission.aiMarks = aiResult.marks;
-      submission.aiFeedback = aiResult.feedback;
-      submission.missingPoints = aiResult.missingPoints;
-      submission.aiEvaluatedAt = new Date();
-      submission.aiModel = aiResult.model;
-      submission.aiRawResponse = aiResult.raw;
-      submission.evaluationDetails = {
-        ...(submission.evaluationDetails || {}),
-        aiMarks: aiResult.marks,
-        aiFeedback: aiResult.feedback,
-        missingPoints: aiResult.missingPoints,
-      };
-
-      await submission.save();
-    } catch (aiError) {
-      console.error(`AI Evaluation Failed for submission ${submission._id}: ${aiError.message}`);
-    }
-
     res.status(201).json(toClientSubmission(submission));
+
+    // Keep upload UX fast; run expensive extraction/AI work in the background.
+    void runPostSubmissionAnalysis({
+      submissionId: submission._id,
+      taskDescription: task.description,
+      answerText,
+      filePath: req.file.path,
+      originalFileName: req.file.originalname,
+      isPdfUpload,
+    });
   } catch (error) {
     res.status(500).json({ message: error.message });
   }
