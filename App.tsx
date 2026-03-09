@@ -1,17 +1,24 @@
 
-import React from 'react';
+import React, { Suspense, lazy } from 'react';
 import { HashRouter, Routes, Route, Navigate } from 'react-router-dom';
 import { AuthProvider, useAuth } from './context/AuthContext';
 import { ThemeProvider } from './context/ThemeContext';
-import Login from './pages/Login';
-import Dashboard from './pages/Dashboard';
-import AdminUsers from './pages/AdminUsers';
-import EvaluatorTasks from './pages/EvaluatorTasks';
-import StudentTasks from './pages/StudentTasks';
-import Submissions from './pages/Submissions';
-import TaskDetails from './pages/TaskDetails';
-import Layout from './layouts/Layout';
 import { getPreferredRouteForUser } from './utils/navigationPersistence';
+
+const Login = lazy(() => import('./pages/Login'));
+const Dashboard = lazy(() => import('./pages/Dashboard'));
+const AdminUsers = lazy(() => import('./pages/AdminUsers'));
+const EvaluatorTasks = lazy(() => import('./pages/EvaluatorTasks'));
+const StudentTasks = lazy(() => import('./pages/StudentTasks'));
+const Submissions = lazy(() => import('./pages/Submissions'));
+const TaskDetails = lazy(() => import('./pages/TaskDetails'));
+const Layout = lazy(() => import('./layouts/Layout'));
+
+const RouteLoading: React.FC = () => (
+  <div className="min-h-screen w-full flex items-center justify-center bg-app text-adaptive-sub">
+    <span className="text-xs font-black uppercase tracking-widest">Loading Interface...</span>
+  </div>
+);
 
 const ProtectedRoute: React.FC<{ children: React.ReactNode; allowedRoles?: string[] }> = ({ children, allowedRoles }) => {
   const { user, loading } = useAuth();
@@ -34,24 +41,26 @@ const App: React.FC = () => {
     <ThemeProvider>
       <AuthProvider>
         <HashRouter>
-          <Routes>
-            <Route path="/login" element={<Login />} />
-            <Route path="/" element={<ProtectedRoute><Layout /></ProtectedRoute>}>
-              <Route index element={<RoleAwareIndexRedirect />} />
-              <Route path="dashboard" element={<Dashboard />} />
-              
-              {/* Admin Routes */}
-              <Route path="admin/users" element={<ProtectedRoute allowedRoles={['admin']}><AdminUsers /></ProtectedRoute>} />
-              
-              {/* Evaluator Routes */}
-              <Route path="evaluator/tasks" element={<ProtectedRoute allowedRoles={['evaluator']}><EvaluatorTasks /></ProtectedRoute>} />
-              <Route path="evaluator/submissions/:taskId" element={<ProtectedRoute allowedRoles={['evaluator']}><Submissions /></ProtectedRoute>} />
-              
-              {/* Student Routes */}
-              <Route path="student/tasks" element={<ProtectedRoute allowedRoles={['student']}><StudentTasks /></ProtectedRoute>} />
-              <Route path="task/:taskId" element={<TaskDetails />} />
-            </Route>
-          </Routes>
+          <Suspense fallback={<RouteLoading />}>
+            <Routes>
+              <Route path="/login" element={<Login />} />
+              <Route path="/" element={<ProtectedRoute><Layout /></ProtectedRoute>}>
+                <Route index element={<RoleAwareIndexRedirect />} />
+                <Route path="dashboard" element={<Dashboard />} />
+                
+                {/* Admin Routes */}
+                <Route path="admin/users" element={<ProtectedRoute allowedRoles={['admin']}><AdminUsers /></ProtectedRoute>} />
+                
+                {/* Evaluator Routes */}
+                <Route path="evaluator/tasks" element={<ProtectedRoute allowedRoles={['evaluator']}><EvaluatorTasks /></ProtectedRoute>} />
+                <Route path="evaluator/submissions/:taskId" element={<ProtectedRoute allowedRoles={['evaluator']}><Submissions /></ProtectedRoute>} />
+                
+                {/* Student Routes */}
+                <Route path="student/tasks" element={<ProtectedRoute allowedRoles={['student']}><StudentTasks /></ProtectedRoute>} />
+                <Route path="task/:taskId" element={<TaskDetails />} />
+              </Route>
+            </Routes>
+          </Suspense>
         </HashRouter>
       </AuthProvider>
     </ThemeProvider>

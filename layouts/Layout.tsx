@@ -34,7 +34,7 @@ const STUDENT_TASK_NOTIFICATION_KEY = 'dtep_student_task_notifications';
 const STUDENT_TASK_NOTIFICATION_LIMIT = 50;
 const EVALUATOR_SUBMISSION_NOTIFICATION_KEY = 'dtep_evaluator_submission_notifications';
 const EVALUATOR_SUBMISSION_NOTIFICATION_LIMIT = 50;
-const MAINTENANCE_POLL_INTERVAL_MS = 5000;
+const MAINTENANCE_POLL_INTERVAL_MS = 15000;
 
 type MaintenanceStatus = {
   enabled: boolean;

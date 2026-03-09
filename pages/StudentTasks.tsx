@@ -127,7 +127,7 @@ const StudentTasks: React.FC = () => {
   useEffect(() => {
     const timer = setInterval(() => {
       setNowMs(Date.now());
-    }, 1000);
+    }, 5000);
     return () => clearInterval(timer);
   }, []);
 

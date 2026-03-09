@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { Suspense, lazy, useEffect, useState } from 'react';
 import { useAuth } from '../context/AuthContext';
 import { useTheme } from '../context/ThemeContext';
 import {
@@ -22,9 +22,10 @@ import {
   ChevronRight
 } from 'lucide-react';
 import StatCard from '../components/StatCard';
-import LogsModal from '../components/LogsModal';
 import api from '../services/api';
 import { getScoreTone } from '../utils/scoreTone';
+
+const LogsModal = lazy(() => import('../components/LogsModal'));
 
 type ChartPoint = {
   name: string;
@@ -375,10 +376,14 @@ const Dashboard: React.FC = () => {
         )}
       </div>
 
-      <LogsModal
-        isOpen={isLogsOpen}
-        onClose={() => setIsLogsOpen(false)}
-      />
+      {isLogsOpen && (
+        <Suspense fallback={null}>
+          <LogsModal
+            isOpen={isLogsOpen}
+            onClose={() => setIsLogsOpen(false)}
+          />
+        </Suspense>
+      )}
     </div>
   );
 };
