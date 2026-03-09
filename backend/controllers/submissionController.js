@@ -12,6 +12,11 @@ const {
 } = require('../utils/missedSubmissionSync');
 
 const uploadRoot = resolveUploadDir();
+const NO_READABLE_CONTENT_MESSAGE =
+  'No readable assignment content was found. Paste the answer text or upload a text-based PDF.';
+
+const isPdfFile = (fileNameOrPath) =>
+  String(fileNameOrPath || '').trim().toLowerCase().endsWith('.pdf');
 
 const appendMissingPoints = (feedbackText = '', missingPoints = '') => {
   const cleanFeedback = String(feedbackText || '').trim();
@@ -35,6 +40,18 @@ const cleanupUploadedFile = (filePath) => {
   }
 };
 
+const extractSubmissionTextFromPdf = async (filePath) => {
+  if (!filePath) return '';
+
+  try {
+    if (!fs.existsSync(filePath)) return '';
+    return String(await extractPDFText(filePath)).trim();
+  } catch (error) {
+    console.warn(`PDF text extraction failed for ${filePath}: ${error.message}`);
+    return '';
+  }
+};
+
 const runPostSubmissionAnalysis = async ({
   submissionId,
   taskDescription,
@@ -50,15 +67,27 @@ const runPostSubmissionAnalysis = async ({
     let derivedAnswer = String(answerText || '').trim();
 
     if (!derivedAnswer && isPdfUpload && filePath) {
-      try {
-        derivedAnswer = String(await extractPDFText(filePath) || '').trim();
-      } catch (extractError) {
-        console.warn(`PDF text extraction failed for submission ${submissionId}: ${extractError.message}`);
-      }
+      derivedAnswer = await extractSubmissionTextFromPdf(filePath);
     }
 
     if (derivedAnswer && !String(submission.answer || '').trim()) {
       submission.answer = derivedAnswer;
+    }
+
+    if (!derivedAnswer) {
+      submission.aiMarks = null;
+      submission.aiFeedback = NO_READABLE_CONTENT_MESSAGE;
+      submission.missingPoints = '';
+      submission.aiEvaluatedAt = new Date();
+      submission.aiModel = null;
+      submission.evaluationDetails = {
+        ...(submission.evaluationDetails || {}),
+        aiMarks: null,
+        aiFeedback: NO_READABLE_CONTENT_MESSAGE,
+        missingPoints: '',
+      };
+      await submission.save();
+      return;
     }
 
     const rawAnswerForEvaluation = derivedAnswer || `Student submitted file: ${originalFileName}`;
@@ -355,7 +384,35 @@ exports.generateAiAssist = async (req, res) => {
       return res.status(403).json({ message: 'Not authorized to evaluate this submission' });
     }
 
-    const answerText = String(submission.answer || '').trim();
+    let answerText = String(submission.answer || '').trim();
+    if (!answerText) {
+      const storedPath = normalizeStoredSubmissionPath(submission);
+      const canExtractFromPdf = isPdfFile(submission.fileName) || isPdfFile(storedPath);
+      if (canExtractFromPdf) {
+        answerText = await extractSubmissionTextFromPdf(storedPath);
+      }
+    }
+
+    if (!answerText) {
+      submission.aiMarks = null;
+      submission.aiFeedback = NO_READABLE_CONTENT_MESSAGE;
+      submission.missingPoints = '';
+      submission.aiEvaluatedAt = new Date();
+      submission.aiModel = null;
+      submission.evaluationDetails = {
+        ...(submission.evaluationDetails || {}),
+        aiMarks: null,
+        aiFeedback: NO_READABLE_CONTENT_MESSAGE,
+        missingPoints: '',
+      };
+      await submission.save();
+      return res.status(422).json({ message: NO_READABLE_CONTENT_MESSAGE });
+    }
+
+    if (!String(submission.answer || '').trim()) {
+      submission.answer = answerText;
+    }
+
     const fallbackAnswer = submission.fileName
       ? `Student uploaded file: ${submission.fileName}`
       : 'No textual answer was provided.';

@@ -217,8 +217,9 @@ const Submissions: React.FC = () => {
 
     } catch (err: any) {
       console.error(err);
-      setAiError(err?.response?.data?.message || err?.message || 'AI evaluation failed.');
-      setFeedback("AI Evaluation Error. Manual grading required.");
+      const serverMessage = err?.response?.data?.message || err?.message || 'AI evaluation failed.';
+      setAiError(serverMessage);
+      setFeedback(serverMessage);
     } finally {
       setIsAILoading(false);
     }
