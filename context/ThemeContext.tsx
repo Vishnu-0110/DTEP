@@ -1,13 +1,76 @@
 
 import React, { createContext, useContext, useState, useEffect } from 'react';
+import { AUTH_STATE_EVENT } from './AuthContext';
 
 export type ThemeType = 'midnight' | 'emerald' | 'cyberpunk' | 'sunset' | 'slate';
 export type ColorMode = 'light' | 'dark';
 
 const LOGIN_THEME: ThemeType = 'slate';
 const LOGIN_MODE: ColorMode = 'light';
+const DEFAULT_THEME: ThemeType = 'midnight';
+const THEME_KEY = 'dtep_theme';
+const MODE_KEY = 'dtep_mode';
+const USER_THEME_PREFIX = 'dtep_theme_user';
+const USER_MODE_PREFIX = 'dtep_mode_user';
 
 const getCurrentHash = () => (typeof window === 'undefined' ? '' : window.location.hash || '#/');
+const isThemeType = (value: string): value is ThemeType =>
+  value === 'midnight' || value === 'emerald' || value === 'cyberpunk' || value === 'sunset' || value === 'slate';
+const isColorMode = (value: string): value is ColorMode => value === 'light' || value === 'dark';
+
+const getActiveUserPreferenceKey = () => {
+  if (typeof window === 'undefined') return 'guest';
+  try {
+    const raw = localStorage.getItem('dtep_user');
+    if (!raw) return 'guest';
+    const parsed = JSON.parse(raw);
+    const value = String(parsed?.id || parsed?.email || '').trim();
+    return value || 'guest';
+  } catch (_) {
+    return 'guest';
+  }
+};
+
+const getThemeStorageKey = (userKey: string) => `${USER_THEME_PREFIX}:${userKey}`;
+const getModeStorageKey = (userKey: string) => `${USER_MODE_PREFIX}:${userKey}`;
+
+const readStoredTheme = () => {
+  if (typeof window === 'undefined') return DEFAULT_THEME;
+
+  const userKey = getActiveUserPreferenceKey();
+  const storedForUser = String(localStorage.getItem(getThemeStorageKey(userKey)) || '').trim();
+  if (isThemeType(storedForUser)) return storedForUser;
+
+  const legacy = String(localStorage.getItem(THEME_KEY) || '').trim();
+  return isThemeType(legacy) ? legacy : DEFAULT_THEME;
+};
+
+const readStoredMode = () => {
+  if (typeof window === 'undefined') return 'dark' as ColorMode;
+
+  const userKey = getActiveUserPreferenceKey();
+  const storedForUser = String(localStorage.getItem(getModeStorageKey(userKey)) || '').trim();
+  if (isColorMode(storedForUser)) return storedForUser;
+
+  const legacy = String(localStorage.getItem(MODE_KEY) || '').trim();
+  if (isColorMode(legacy)) return legacy;
+
+  return window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
+};
+
+const persistThemeForActiveUser = (newTheme: ThemeType) => {
+  if (typeof window === 'undefined') return;
+  const userKey = getActiveUserPreferenceKey();
+  localStorage.setItem(getThemeStorageKey(userKey), newTheme);
+  localStorage.setItem(THEME_KEY, newTheme);
+};
+
+const persistModeForActiveUser = (newMode: ColorMode) => {
+  if (typeof window === 'undefined') return;
+  const userKey = getActiveUserPreferenceKey();
+  localStorage.setItem(getModeStorageKey(userKey), newMode);
+  localStorage.setItem(MODE_KEY, newMode);
+};
 
 interface ThemeContextType {
   theme: ThemeType;
@@ -19,37 +82,37 @@ interface ThemeContextType {
 const ThemeContext = createContext<ThemeContextType | undefined>(undefined);
 
 export const ThemeProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
-  const [theme, setThemeState] = useState<ThemeType>(() => {
-    const saved = localStorage.getItem('dtep_theme');
-    return (saved as ThemeType) || 'midnight';
-  });
-
-  const [mode, setModeState] = useState<ColorMode>(() => {
-    const saved = localStorage.getItem('dtep_mode');
-    if (saved) return saved as ColorMode;
-    return window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
-  });
+  const [theme, setThemeState] = useState<ThemeType>(() => readStoredTheme());
+  const [mode, setModeState] = useState<ColorMode>(() => readStoredMode());
   const [routeHash, setRouteHash] = useState(getCurrentHash);
 
   const setTheme = (newTheme: ThemeType) => {
     setThemeState(newTheme);
-    localStorage.setItem('dtep_theme', newTheme);
+    persistThemeForActiveUser(newTheme);
   };
 
   const toggleMode = () => {
     const newMode = mode === 'light' ? 'dark' : 'light';
     setModeState(newMode);
-    localStorage.setItem('dtep_mode', newMode);
+    persistModeForActiveUser(newMode);
   };
 
   useEffect(() => {
     if (typeof window === 'undefined') return undefined;
 
     const syncHash = () => setRouteHash(getCurrentHash());
+    const syncPreferences = () => {
+      setThemeState(readStoredTheme());
+      setModeState(readStoredMode());
+    };
     window.addEventListener('hashchange', syncHash);
+    window.addEventListener(AUTH_STATE_EVENT, syncPreferences);
     syncHash();
 
-    return () => window.removeEventListener('hashchange', syncHash);
+    return () => {
+      window.removeEventListener('hashchange', syncHash);
+      window.removeEventListener(AUTH_STATE_EVENT, syncPreferences);
+    };
   }, []);
 
   useEffect(() => {

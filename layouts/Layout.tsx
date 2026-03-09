@@ -5,6 +5,7 @@ import { useAuth } from '../context/AuthContext';
 import { useTheme, ThemeType } from '../context/ThemeContext';
 import api from '../services/api';
 import { useBodyScrollLock } from '../utils/useBodyScrollLock';
+import { saveLastRouteForUser } from '../utils/navigationPersistence';
 import StudentRealtimeNotifier, {
   EvaluatorSubmissionNotification,
   StudentTaskNotification
@@ -180,6 +181,11 @@ const Layout: React.FC = () => {
     setIsThemeMenuOpen(false);
     setIsNotificationMenuOpen(false);
   }, [location.pathname]);
+
+  useEffect(() => {
+    if (!user?.id) return;
+    saveLastRouteForUser(user.id, location.pathname);
+  }, [location.pathname, user?.id]);
 
   useEffect(() => {
     if (!isNotificationMenuOpen && !isThemeMenuOpen) return;

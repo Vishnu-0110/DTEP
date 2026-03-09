@@ -1,14 +1,35 @@
 
-import axios from 'axios';
+import axios, { AxiosError, InternalAxiosRequestConfig } from 'axios';
 
 const LOOPBACK_HOSTS = new Set(['localhost', '127.0.0.1', '::1']);
+const DEFAULT_TIMEOUT_MS = 30000;
+const DEFAULT_RETRY_MAX = 2;
+const DEFAULT_RETRY_DELAY_MS = 1200;
+const RETRYABLE_METHODS = new Set(['get', 'head', 'options']);
+const RETRY_COUNT_KEY = '__dtep_retry_count';
+const WARMUP_ATTEMPTS = 2;
+const WARMUP_DELAY_MS = 900;
 
 const trimTrailingSlash = (value: string) => value.replace(/\/+$/, '');
+const wait = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
+
+type RetryableRequestConfig = InternalAxiosRequestConfig & {
+  [RETRY_COUNT_KEY]?: number;
+};
+
+const readNumberEnv = (key: string) =>
+  Number((import.meta.env as Record<string, string | undefined>)[key] || '');
+
+const resolveNumberEnv = (key: string, fallback: number, min: number, max: number) => {
+  const raw = readNumberEnv(key);
+  if (!Number.isFinite(raw)) return fallback;
+  return Math.min(Math.max(Math.trunc(raw), min), max);
+};
 
 const normalizeBaseUrl = (value: string) => {
   const trimmed = trimTrailingSlash(String(value || '').trim());
   if (!trimmed) return '';
-// hai //
+
   try {
     const parsed = new URL(trimmed);
     const path = parsed.pathname === '/' ? '' : parsed.pathname;
@@ -56,13 +77,97 @@ const resolveBaseUrl = () => {
 };
 
 export const API_BASE_URL = resolveBaseUrl();
+const resolveTimeoutMs = () => {
+  const raw =
+    readNumberEnv('VITE_API_TIMEOUT_MS') ||
+    readNumberEnv('VITE_API_TIMEOUT') ||
+    DEFAULT_TIMEOUT_MS;
+
+  if (!Number.isFinite(raw)) return DEFAULT_TIMEOUT_MS;
+  return Math.min(Math.max(Math.trunc(raw), 5000), 120000);
+};
+
+export const API_TIMEOUT_MS = resolveTimeoutMs();
+export const API_RETRY_MAX = resolveNumberEnv('VITE_API_RETRY_MAX', DEFAULT_RETRY_MAX, 0, 5);
+export const API_RETRY_DELAY_MS = resolveNumberEnv(
+  'VITE_API_RETRY_DELAY_MS',
+  DEFAULT_RETRY_DELAY_MS,
+  250,
+  5000
+);
+
+const resolveHealthcheckUrl = () => {
+  if (typeof window === 'undefined') return '';
+  if (API_BASE_URL.startsWith('/')) return '';
+
+  try {
+    const parsed = new URL(API_BASE_URL);
+    const path = parsed.pathname.endsWith('/api')
+      ? parsed.pathname.slice(0, -4)
+      : parsed.pathname;
+    return `${parsed.protocol}//${parsed.host}${trimTrailingSlash(path)}/healthz`;
+  } catch (_) {
+    return '';
+  }
+};
+
+const isNetworkLikeError = (error: AxiosError) => {
+  if (error.response) return false;
+  const code = String(error.code || '').trim().toUpperCase();
+  const message = String(error.message || '').trim().toLowerCase();
+  return (
+    code === 'ECONNABORTED' ||
+    code === 'ERR_NETWORK' ||
+    message.includes('timeout') ||
+    message.includes('network')
+  );
+};
+
+const canRetryRequest = (config?: RetryableRequestConfig) => {
+  if (!config) return false;
+  const method = String(config.method || 'get').toLowerCase();
+  const url = String(config.url || '').toLowerCase();
+  const isLoginRequest = url.includes('/auth/login');
+  return RETRYABLE_METHODS.has(method) || isLoginRequest;
+};
+
+let warmupPromise: Promise<void> | null = null;
+export const warmupBackendConnection = async () => {
+  if (warmupPromise) return warmupPromise;
+
+  warmupPromise = (async () => {
+    const healthUrl = resolveHealthcheckUrl();
+    if (!healthUrl || typeof fetch !== 'function') return;
+
+    for (let attempt = 1; attempt <= WARMUP_ATTEMPTS; attempt += 1) {
+      try {
+        const response = await fetch(`${healthUrl}?t=${Date.now()}`, {
+          method: 'GET',
+          cache: 'no-store',
+        });
+
+        if (response.ok) return;
+      } catch (_) {
+        // Keep retrying quietly; login flow has its own visible error path if needed.
+      }
+
+      if (attempt < WARMUP_ATTEMPTS) {
+        await wait(WARMUP_DELAY_MS * attempt);
+      }
+    }
+  })().finally(() => {
+    warmupPromise = null;
+  });
+
+  return warmupPromise;
+};
 
 const api = axios.create({
   baseURL: API_BASE_URL,
   headers: {
     'Content-Type': 'application/json',
   },
-  timeout: 10000, 
+  timeout: API_TIMEOUT_MS,
 });
 
 api.interceptors.request.use(
@@ -90,7 +195,23 @@ api.interceptors.response.use(
     }
     return response;
   },
-  (error) => {
+  async (error: AxiosError) => {
+    const config = error.config as RetryableRequestConfig | undefined;
+    const retries = Number(config?.[RETRY_COUNT_KEY] || 0);
+
+    if (
+      API_RETRY_MAX > 0 &&
+      isNetworkLikeError(error) &&
+      canRetryRequest(config) &&
+      retries < API_RETRY_MAX
+    ) {
+      if (config) {
+        config[RETRY_COUNT_KEY] = retries + 1;
+        await wait(API_RETRY_DELAY_MS * config[RETRY_COUNT_KEY]!);
+        return api.request(config);
+      }
+    }
+
     if (error?.response?.status === 401) {
       localStorage.removeItem('dtep_user');
       if (typeof window !== 'undefined' && window.location.hash !== '#/login') {

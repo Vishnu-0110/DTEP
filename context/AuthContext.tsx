@@ -1,7 +1,9 @@
 
 import React, { createContext, useContext, useState, useEffect, useCallback } from 'react';
 import { User, UserRole } from '../types';
-import api from '../services/api';
+import api, { warmupBackendConnection } from '../services/api';
+
+export const AUTH_STATE_EVENT = 'dtep-auth-state-changed';
 
 interface AuthContextType {
   user: User | null;
@@ -12,6 +14,10 @@ interface AuthContextType {
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
+const emitAuthStateChanged = () => {
+  if (typeof window === 'undefined') return;
+  window.dispatchEvent(new Event(AUTH_STATE_EVENT));
+};
 
 export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const [user, setUser] = useState<User | null>(null);
@@ -19,6 +25,10 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const isDemoMode = false;
 
   useEffect(() => {
+    warmupBackendConnection().catch(() => {
+      // Login flow has explicit error handling; ignore proactive warm-up failures.
+    });
+
     const storedUser = localStorage.getItem('dtep_user');
     if (storedUser) {
       try {
@@ -27,12 +37,14 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         const isJwtLike = token.split('.').length === 3;
         if (!token || token.startsWith('mock_') || !isJwtLike) {
           localStorage.removeItem('dtep_user');
+          emitAuthStateChanged();
           setLoading(false);
           return;
         }
         setUser(parsed);
       } catch (e) {
         localStorage.removeItem('dtep_user');
+        emitAuthStateChanged();
       }
     }
     setLoading(false);
@@ -40,6 +52,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
   const login = useCallback(async (email: string, password: string, expectedRole: UserRole) => {
     try {
+      await warmupBackendConnection();
       const response = await api.post('/auth/login', { email, password, expectedRole });
       const { _id, name, role, token } = response.data;
       
@@ -53,6 +66,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
       setUser(userData);
       localStorage.setItem('dtep_user', JSON.stringify(userData));
+      emitAuthStateChanged();
     } catch (error: any) {
       let message = 'Login failed.';
       const status = Number(error?.response?.status || 0);
@@ -64,7 +78,12 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       const contentType = String(responseHeaders['content-type'] || '').trim().toLowerCase();
       
       if (!error.response) {
-        message = 'Network error: backend is offline or the API URL is misconfigured.';
+        const errorCode = String(error?.code || '').trim().toUpperCase();
+        const errorMessage = String(error?.message || '').trim().toLowerCase();
+        const isTimeout = errorCode === 'ECONNABORTED' || errorMessage.includes('timeout');
+        message = isTimeout
+          ? 'Backend is starting (Render cold start) or too slow to respond. Wait 20-40 seconds and try login again.'
+          : 'Network error: backend is offline or the API URL is misconfigured.';
       } else if (
         status === 404 ||
         vercelError === 'NOT_FOUND' ||
@@ -87,6 +106,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const logout = useCallback(() => {
     setUser(null);
     localStorage.removeItem('dtep_user');
+    emitAuthStateChanged();
   }, []);
 
   return (

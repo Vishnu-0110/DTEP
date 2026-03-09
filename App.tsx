@@ -11,6 +11,7 @@ import StudentTasks from './pages/StudentTasks';
 import Submissions from './pages/Submissions';
 import TaskDetails from './pages/TaskDetails';
 import Layout from './layouts/Layout';
+import { getPreferredRouteForUser } from './utils/navigationPersistence';
 
 const ProtectedRoute: React.FC<{ children: React.ReactNode; allowedRoles?: string[] }> = ({ children, allowedRoles }) => {
   const { user, loading } = useAuth();
@@ -22,6 +23,12 @@ const ProtectedRoute: React.FC<{ children: React.ReactNode; allowedRoles?: strin
   return <>{children}</>;
 };
 
+const RoleAwareIndexRedirect: React.FC = () => {
+  const { user } = useAuth();
+  if (!user) return <Navigate to="/login" replace />;
+  return <Navigate to={getPreferredRouteForUser(user.id, user.role)} replace />;
+};
+
 const App: React.FC = () => {
   return (
     <ThemeProvider>
@@ -30,7 +37,7 @@ const App: React.FC = () => {
           <Routes>
             <Route path="/login" element={<Login />} />
             <Route path="/" element={<ProtectedRoute><Layout /></ProtectedRoute>}>
-              <Route index element={<Navigate to="/dashboard" replace />} />
+              <Route index element={<RoleAwareIndexRedirect />} />
               <Route path="dashboard" element={<Dashboard />} />
               
               {/* Admin Routes */}

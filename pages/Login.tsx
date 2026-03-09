@@ -1,9 +1,10 @@
 
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { UserRole } from '../types';
 import { Lock, Mail, ChevronRight, Info } from 'lucide-react';
+import { getDefaultRouteForRole, getPreferredRouteForUser } from '../utils/navigationPersistence';
 
 const Login: React.FC = () => {
   const [email, setEmail] = useState('');
@@ -11,8 +12,13 @@ const Login: React.FC = () => {
   const [role, setRole] = useState<UserRole>(UserRole.STUDENT);
   const [error, setError] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const { login } = useAuth();
+  const { login, user, loading } = useAuth();
   const navigate = useNavigate();
+
+  useEffect(() => {
+    if (loading || !user) return;
+    navigate(getPreferredRouteForUser(user.id, user.role), { replace: true });
+  }, [loading, navigate, user]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -26,7 +32,21 @@ const Login: React.FC = () => {
     setIsSubmitting(true);
     try {
       await login(email, password, role);
-      navigate('/dashboard');
+      let destination = getDefaultRouteForRole(role);
+      try {
+        const stored = localStorage.getItem('dtep_user');
+        if (stored) {
+          const parsed = JSON.parse(stored);
+          const userId = String(parsed?.id || '').trim();
+          const userRole = String(parsed?.role || role).trim().toLowerCase();
+          destination = userId
+            ? getPreferredRouteForUser(userId, userRole as UserRole)
+            : getDefaultRouteForRole(userRole as UserRole);
+        }
+      } catch (_) {
+        destination = getDefaultRouteForRole(role);
+      }
+      navigate(destination, { replace: true });
     } catch (err: any) {
       setError(err.message || 'Authentication failed');
     } finally {

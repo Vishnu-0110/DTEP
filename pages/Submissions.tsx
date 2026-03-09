@@ -17,6 +17,8 @@ import api from '../services/api';
 import { useAuth } from '../context/AuthContext';
 import { getScoreTone } from '../utils/scoreTone';
 
+const clampMarks = (value: number) => Math.max(0, Math.min(100, Math.round(value)));
+
 const Submissions: React.FC = () => {
   const { taskId } = useParams();
   const location = useLocation();
@@ -29,6 +31,7 @@ const Submissions: React.FC = () => {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isViewing, setIsViewing] = useState(false);
   const [marks, setMarks] = useState<number>(0);
+  const [marksInput, setMarksInput] = useState('0');
   const [feedback, setFeedback] = useState('');
   const [aiAnalysis, setAiAnalysis] = useState<{strengths: string[], weaknesses: string[], improvements: string[]} | null>(null);
   const [aiError, setAiError] = useState('');
@@ -46,6 +49,19 @@ const Submissions: React.FC = () => {
     return cleanFeedback
       ? `${cleanFeedback}\n\nMissing Points: ${cleanMissing}`
       : `Missing Points: ${cleanMissing}`;
+  };
+
+  const applyMarksInput = (rawValue: string) => {
+    const digitsOnly = String(rawValue || '').replace(/[^\d]/g, '');
+    if (!digitsOnly) {
+      setMarksInput('');
+      setMarks(0);
+      return;
+    }
+
+    const normalizedValue = clampMarks(Number(digitsOnly));
+    setMarks(normalizedValue);
+    setMarksInput(String(normalizedValue));
   };
 
   const normalizeAiReport = (report: any) => ({
@@ -110,8 +126,10 @@ const Submissions: React.FC = () => {
         activeSubmission.aiFeedback ||
         '';
       const initialFeedback = appendMissingPoints(baseFeedback, activeSubmission.missingPoints);
+      const normalizedInitialMarks = clampMarks(initialMarks);
 
-      setMarks(initialMarks);
+      setMarks(normalizedInitialMarks);
+      setMarksInput(String(normalizedInitialMarks));
       setFeedback(initialFeedback);
       setAiAnalysis(activeSubmission.aiReport || null);
     }
@@ -164,7 +182,9 @@ const Submissions: React.FC = () => {
       );
 
       if (typeof scoreValue === 'number') {
-        setMarks(Math.max(0, Math.min(100, Math.round(scoreValue))));
+        const normalizedScore = clampMarks(scoreValue);
+        setMarks(normalizedScore);
+        setMarksInput(String(normalizedScore));
       }
 
       setFeedback(nextFeedback);
@@ -390,8 +410,14 @@ const Submissions: React.FC = () => {
                   </div>
                   <input 
                     type="number" 
-                    value={marks}
-                    onChange={(e) => setMarks(Number(e.target.value))}
+                    value={marksInput}
+                    onChange={(e) => applyMarksInput(e.target.value)}
+                    onBlur={() => {
+                      if (!marksInput) {
+                        setMarks(0);
+                        setMarksInput('0');
+                      }
+                    }}
                     max={100} min={0}
                     disabled={isEvaluated || isSubmitting}
                     className={`w-full bg-adaptive-nested border-2 rounded-2xl py-5 px-6 text-3xl sm:text-4xl font-black text-center focus:outline-none focus:theme-border-primary transition-all ${currentScoreTone.borderClass} ${currentScoreTone.valueTextClass} ${isEvaluated ? 'opacity-50 cursor-not-allowed' : ''}`}

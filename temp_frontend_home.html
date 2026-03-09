@@ -1,0 +1,163 @@
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Digital Task Evaluation Portal</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;900&display=swap" rel="stylesheet">
+    <script>
+      tailwind.config = {
+        darkMode: 'class',
+        theme: {
+          extend: {
+            colors: {
+            }
+          }
+        }
+      }
+    </script>
+    <style>
+        :root {
+            /* Base Theme Variables */
+            --primary: 59, 130, 246; /* Blue 600 */
+            --accent: 79, 70, 229; /* Indigo 600 */
+            
+            /* Mode Variables - Default Dark */
+            --bg-app: 10, 14, 26;
+            --bg-sidebar: 15, 23, 42;
+            --bg-card: 15, 23, 42, 0.96;
+            --text-main: 248, 250, 252; /* slate-50 */
+            --text-sub: 226, 232, 240; /* slate-200 */
+            --border-main: 148, 163, 184, 0.35;
+            --glass-blur: 0px;
+            --bg-nested: 30, 41, 59, 0.92;
+            --bg-soft: 30, 41, 59, 0.88;
+            --overlay-scrim: 15, 23, 42, 1;
+        }
+
+        /* Light Mode Overrides */
+        [data-mode='light'] {
+            --bg-app: 241, 245, 249; /* slate-100 */
+            --bg-sidebar: 255, 255, 255;
+            --bg-card: 255, 255, 255, 1;
+            --text-main: 15, 23, 42; /* slate-950 */
+            --text-sub: 30, 41, 59; /* slate-800 */
+            --border-main: 51, 65, 85, 0.22;
+            --bg-nested: 226, 232, 240, 0.95;
+            --bg-soft: 241, 245, 249, 1;
+            --overlay-scrim: 15, 23, 42, 1;
+        }
+
+        /* Theme Color Definitions */
+        [data-theme='midnight'] { --primary: 59, 130, 246; --accent: 79, 70, 229; }
+        [data-theme='emerald'] { --primary: 16, 185, 129; --accent: 20, 184, 166; }
+        [data-theme='cyberpunk'] { --primary: 236, 72, 153; --accent: 168, 85, 247; }
+        [data-theme='sunset'] { --primary: 245, 158, 11; --accent: 249, 115, 22; }
+        [data-theme='slate'] { --primary: 100, 116, 139; --accent: 71, 85, 105; }
+
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: rgb(var(--bg-app));
+            color: rgb(var(--text-main));
+            transition: background-color 0.4s cubic-bezier(0.4, 0, 0.2, 1), color 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+        
+        .glass-card {
+            background: rgba(var(--bg-card));
+            backdrop-filter: blur(var(--glass-blur));
+            border: 1px solid rgba(var(--border-main));
+            transition: background 0.4s, border 0.4s;
+        }
+
+        .modal-overlay {
+            background: rgba(var(--overlay-scrim));
+            backdrop-filter: none;
+        }
+
+        .modal-surface {
+            background: rgba(var(--bg-sidebar), 0.96);
+            border: 1px solid rgba(var(--border-main));
+            box-shadow: 0 24px 60px rgba(2, 6, 23, 0.3);
+        }
+
+        .surface-input {
+            background: rgba(var(--bg-soft));
+            border: 1px solid rgba(var(--border-main));
+            color: rgb(var(--text-main));
+        }
+        .surface-input::placeholder {
+            color: rgba(var(--text-sub), 0.9);
+        }
+        .surface-input:focus {
+            outline: none;
+            border-color: rgba(var(--primary), 0.45);
+            box-shadow: 0 0 0 3px rgba(var(--primary), 0.18);
+        }
+
+        .btn-primary {
+            background: linear-gradient(135deg, rgb(var(--primary)), rgb(var(--accent)));
+            color: #fff;
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            box-shadow: 0 12px 30px rgba(var(--primary), 0.35);
+        }
+        .btn-primary:hover { filter: brightness(1.06); }
+
+        .btn-secondary {
+            background: rgba(var(--bg-soft));
+            color: rgb(var(--text-main));
+            border: 1px solid rgba(var(--border-main));
+        }
+        .btn-secondary:hover {
+            background: rgba(var(--bg-nested));
+            border-color: rgba(var(--primary), 0.25);
+            color: rgb(var(--text-main));
+        }
+
+        /* Strengthen reused utility contrast in both modes */
+        .bg-black\/5 { background-color: rgba(15, 23, 42, 0.08) !important; }
+        .dark .dark\:bg-white\/5 { background-color: rgba(255, 255, 255, 0.12) !important; }
+
+        .custom-scrollbar::-webkit-scrollbar {
+            width: 6px;
+        }
+        .custom-scrollbar::-webkit-scrollbar-track {
+            background: transparent;
+        }
+        .custom-scrollbar::-webkit-scrollbar-thumb {
+            background: rgba(var(--primary), 0.2);
+            border-radius: 10px;
+        }
+        
+        /* Dynamic Theme Utility Overrides */
+        .theme-bg-primary { background-color: rgb(var(--primary)); }
+        .theme-text-primary { color: rgb(var(--primary)); }
+        .theme-border-primary { border-color: rgba(var(--primary), 0.2); }
+        .theme-shadow-primary { box-shadow: 0 20px 25px -5px rgba(var(--primary), 0.3); }
+        
+        .bg-adaptive-nested { background-color: rgba(var(--bg-nested)); }
+
+        .animate-in {
+            animation: fadeIn 0.5s ease-out forwards;
+        }
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(10px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        /* Responsive Text helpers for light/dark */
+        .text-adaptive-main { color: rgb(var(--text-main)); }
+        .text-adaptive-sub { color: rgb(var(--text-sub)); }
+    </style>
+  <script type="module" crossorigin src="/assets/index-UljMh9nP.js"></script>
+  <link rel="modulepreload" crossorigin href="/assets/react-CrRsEbrQ.js">
+  <link rel="modulepreload" crossorigin href="/assets/http-C0Zqfgkc.js">
+  <link rel="modulepreload" crossorigin href="/assets/ui-5XE2eZk9.js">
+  <link rel="modulepreload" crossorigin href="/assets/charts-BhuQ57wT.js">
+</head>
+<body class="overflow-x-hidden">
+    <div id="root"></div>
+</body>
+</html>
+

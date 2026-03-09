@@ -51,6 +51,9 @@ The frontend uses `HashRouter`, so it can be hosted on static platforms without 
 - `VITE_API_URL`: optional backend origin. Leave empty when `/api` is reverse-proxied on the same domain.
 - `VITE_API_PORT`: localhost fallback port for local development. Default is `5000`.
 - `VITE_DEV_PROXY_TARGET`: optional Vite-only backend target for local `/api` proxying
+- `VITE_API_TIMEOUT_MS`: optional frontend request timeout in milliseconds. Default `30000`, useful for backend cold starts.
+- `VITE_API_RETRY_MAX`: optional retry count for transient network failures. Default `2`.
+- `VITE_API_RETRY_DELAY_MS`: optional base delay (ms) between retries. Default `1200`.
 
 ### Backend
 
