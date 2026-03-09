@@ -156,8 +156,19 @@ const StudentRealtimeNotifier: React.FC<StudentRealtimeNotifierProps> = ({
     lastMaintenanceAtRef.current = localStorage.getItem(getMaintenanceNotificationKey(activeRole)) || nowIso;
 
     let isCancelled = false;
+    let timeoutId: number | null = null;
+    let networkFailureCount = 0;
+
+    const scheduleNextPoll = (hadNetworkError: boolean) => {
+      if (isCancelled) return;
+      const nextDelay = hadNetworkError
+        ? Math.min(POLL_INTERVAL_MS * 2 ** networkFailureCount, 90000)
+        : POLL_INTERVAL_MS;
+      timeoutId = window.setTimeout(pollNotifications, nextDelay);
+    };
 
     const pollNotifications = async () => {
+      let hadNetworkError = false;
       try {
         const response = await api.get(
           activeRole === 'student'
@@ -271,17 +282,27 @@ const StudentRealtimeNotifier: React.FC<StudentRealtimeNotifierProps> = ({
           pushToast(title, body, 'maintenance');
           triggerBrowserNotification(title, body);
         }
-      } catch (_) {
+        networkFailureCount = 0;
+      } catch (error: any) {
         // Silent failure to avoid interrupting the current workflow.
+        hadNetworkError = !error?.response;
+        if (hadNetworkError) {
+          networkFailureCount = Math.min(networkFailureCount + 1, 4);
+        } else {
+          networkFailureCount = 0;
+        }
+      } finally {
+        scheduleNextPoll(hadNetworkError);
       }
     };
 
     pollNotifications();
-    const intervalId = window.setInterval(pollNotifications, POLL_INTERVAL_MS);
 
     return () => {
       isCancelled = true;
-      window.clearInterval(intervalId);
+      if (timeoutId !== null) {
+        window.clearTimeout(timeoutId);
+      }
     };
   }, [activeRole]);
 

@@ -237,11 +237,23 @@ const Layout: React.FC = () => {
     }
 
     let isCancelled = false;
+    let timeoutId: number | null = null;
+    let networkFailureCount = 0;
+
+    const scheduleNextPoll = (hadNetworkError: boolean) => {
+      if (isCancelled) return;
+      const nextDelay = hadNetworkError
+        ? Math.min(MAINTENANCE_POLL_INTERVAL_MS * 2 ** networkFailureCount, 60000)
+        : MAINTENANCE_POLL_INTERVAL_MS;
+      timeoutId = window.setTimeout(fetchMaintenanceStatus, nextDelay);
+    };
 
     const fetchMaintenanceStatus = async () => {
+      let hadNetworkError = false;
       try {
         const response = await api.get('/system/maintenance');
         if (isCancelled) return;
+        networkFailureCount = 0;
         setMaintenanceStatus({
           enabled: Boolean(response.data?.enabled),
           message: String(response.data?.message || '').trim(),
@@ -251,6 +263,7 @@ const Layout: React.FC = () => {
         if (isCancelled) return;
 
         if (error?.response?.status === 503 && error?.response?.data?.maintenance) {
+          networkFailureCount = 0;
           const maintenance = error.response.data.maintenance;
           setMaintenanceStatus({
             enabled: Boolean(maintenance.enabled),
@@ -258,22 +271,30 @@ const Layout: React.FC = () => {
             updatedAt: maintenance.updatedAt || null,
           });
         } else {
+          hadNetworkError = !error?.response;
+          if (hadNetworkError) {
+            networkFailureCount = Math.min(networkFailureCount + 1, 4);
+          } else {
+            networkFailureCount = 0;
+          }
           setMaintenanceStatus(null);
         }
       } finally {
         if (!isCancelled) {
           setIsMaintenanceLoading(false);
+          scheduleNextPoll(hadNetworkError);
         }
       }
     };
 
     setIsMaintenanceLoading(true);
     fetchMaintenanceStatus();
-    const intervalId = window.setInterval(fetchMaintenanceStatus, MAINTENANCE_POLL_INTERVAL_MS);
 
     return () => {
       isCancelled = true;
-      window.clearInterval(intervalId);
+      if (timeoutId !== null) {
+        window.clearTimeout(timeoutId);
+      }
     };
   }, [shouldEnforceMaintenance]);
 
