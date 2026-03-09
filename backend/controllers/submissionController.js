@@ -41,6 +41,28 @@ const looksLikeMissingContentFeedback = (value) => {
   if (!text) return false;
   return MISSING_CONTENT_FEEDBACK_PATTERNS.every((pattern) => pattern.test(text));
 };
+const normalizeAiReportPayload = (value) => {
+  const source = value && typeof value === 'object' ? value : {};
+  const toList = (entry) =>
+    Array.isArray(entry)
+      ? entry.map((item) => String(item || '').trim()).filter(Boolean)
+      : [];
+
+  return {
+    strengths: toList(source.strengths),
+    weaknesses: toList(source.weaknesses),
+    improvements: toList(source.improvements),
+  };
+};
+const buildEvaluationDetails = (baseDetails, patch = {}) => {
+  const base = baseDetails && typeof baseDetails === 'object' ? baseDetails : {};
+  const next = {
+    ...base,
+    ...patch,
+  };
+  next.aiReport = normalizeAiReportPayload(next.aiReport);
+  return next;
+};
 
 const appendMissingPoints = (feedbackText = '', missingPoints = '') => {
   const cleanFeedback = String(feedbackText || '').trim();
@@ -105,12 +127,11 @@ const runPostSubmissionAnalysis = async ({
       submission.missingPoints = '';
       submission.aiEvaluatedAt = new Date();
       submission.aiModel = null;
-      submission.evaluationDetails = {
-        ...(submission.evaluationDetails || {}),
+      submission.evaluationDetails = buildEvaluationDetails(submission.evaluationDetails, {
         aiMarks: null,
         aiFeedback: NO_READABLE_CONTENT_MESSAGE,
         missingPoints: '',
-      };
+      });
       await submission.save();
       return;
     }
@@ -124,12 +145,11 @@ const runPostSubmissionAnalysis = async ({
     submission.aiEvaluatedAt = new Date();
     submission.aiModel = aiResult.model;
     submission.aiRawResponse = aiResult.raw;
-    submission.evaluationDetails = {
-      ...(submission.evaluationDetails || {}),
+    submission.evaluationDetails = buildEvaluationDetails(submission.evaluationDetails, {
       aiMarks: aiResult.marks,
       aiFeedback: aiResult.feedback,
       missingPoints: aiResult.missingPoints,
-    };
+    });
 
     await submission.save();
   } catch (analysisError) {
@@ -364,20 +384,21 @@ exports.evaluateSubmission = async (req, res) => {
     if (remarks !== undefined) submission.remarks = remarks;
     if (feedback !== undefined && remarks === undefined) submission.remarks = feedback;
     if (submission.remarks !== undefined) submission.feedback = submission.remarks;
-    submission.aiReport = aiReport;
+    const normalizedAiReport = normalizeAiReportPayload(aiReport ?? submission.aiReport);
+    submission.aiReport = normalizedAiReport;
     submission.status = 'evaluated';
     submission.evaluatedBy = req.user._id;
     submission.evaluatedAt = new Date();
-    submission.evaluationDetails = {
+    submission.evaluationDetails = buildEvaluationDetails(submission.evaluationDetails, {
       finalMarks: typeof submission.marks === 'number' ? submission.marks : null,
       finalFeedback: String(submission.remarks || '').trim(),
       aiMarks: typeof submission.aiMarks === 'number' ? submission.aiMarks : null,
       aiFeedback: submission.aiFeedback || '',
       missingPoints: submission.missingPoints || '',
-      aiReport: aiReport || submission.aiReport || { strengths: [], weaknesses: [], improvements: [] },
+      aiReport: normalizedAiReport,
       evaluatedBy: req.user._id,
       evaluatedAt: submission.evaluatedAt,
-    };
+    });
 
     await submission.save();
     res.json(toClientSubmission(submission));
@@ -427,12 +448,11 @@ exports.generateAiAssist = async (req, res) => {
       submission.missingPoints = '';
       submission.aiEvaluatedAt = new Date();
       submission.aiModel = null;
-      submission.evaluationDetails = {
-        ...(submission.evaluationDetails || {}),
+      submission.evaluationDetails = buildEvaluationDetails(submission.evaluationDetails, {
         aiMarks: null,
         aiFeedback: NO_READABLE_CONTENT_MESSAGE,
         missingPoints: '',
-      };
+      });
       await submission.save();
       return res.status(422).json({ message: NO_READABLE_CONTENT_MESSAGE });
     }
@@ -460,13 +480,12 @@ exports.generateAiAssist = async (req, res) => {
     submission.aiEvaluatedAt = new Date();
     submission.aiModel = aiDraft.model;
     submission.aiRawResponse = aiDraft.raw;
-    submission.evaluationDetails = {
-      ...(submission.evaluationDetails || {}),
+    submission.evaluationDetails = buildEvaluationDetails(submission.evaluationDetails, {
       aiMarks: aiScore,
       aiFeedback: submission.aiFeedback,
       missingPoints: submission.missingPoints || '',
       aiReport,
-    };
+    });
 
     await submission.save();
 
