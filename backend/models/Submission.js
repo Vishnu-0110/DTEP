@@ -1,5 +1,20 @@
 const mongoose = require('mongoose');
 
+const normalizeAiReport = (value) => {
+  const source = value && typeof value === 'object' ? value : {};
+
+  const toList = (entry) =>
+    Array.isArray(entry)
+      ? entry.map((item) => String(item || '').trim()).filter(Boolean)
+      : [];
+
+  return {
+    strengths: toList(source.strengths),
+    weaknesses: toList(source.weaknesses),
+    improvements: toList(source.improvements),
+  };
+};
+
 const submissionSchema = new mongoose.Schema({
   userId: { type: mongoose.Schema.Types.ObjectId, ref: 'User', required: true },
   taskId: { type: mongoose.Schema.Types.ObjectId, ref: 'Task', required: true },
@@ -73,6 +88,16 @@ submissionSchema.pre('validate', function syncAliases(next) {
   } else if (!this.status) {
     this.status = 'pending';
   }
+
+  this.aiReport = normalizeAiReport(this.aiReport);
+
+  if (!this.evaluationDetails || typeof this.evaluationDetails !== 'object') {
+    this.evaluationDetails = {};
+  }
+
+  this.evaluationDetails.aiReport = normalizeAiReport(
+    this.evaluationDetails.aiReport || this.aiReport
+  );
 
   next();
 });
