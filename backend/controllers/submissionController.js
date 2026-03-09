@@ -14,9 +14,33 @@ const {
 const uploadRoot = resolveUploadDir();
 const NO_READABLE_CONTENT_MESSAGE =
   'No readable assignment content was found. Paste the answer text or upload a text-based PDF.';
+const PLACEHOLDER_ANSWER_PATTERNS = [
+  /^student\s+submitted\s+file\s*:/i,
+  /^student\s+uploaded\s+file\s*:/i,
+  /^no\s+submission\s+text\s+provided/i,
+];
+const MISSING_CONTENT_FEEDBACK_PATTERNS = [
+  /could not be evaluated/i,
+  /not provided or accessible/i,
+  /no points can be awarded/i,
+];
 
 const isPdfFile = (fileNameOrPath) =>
   String(fileNameOrPath || '').trim().toLowerCase().endsWith('.pdf');
+const looksLikePlaceholderAnswer = (value) => {
+  const text = String(value || '').trim();
+  if (!text) return true;
+  return PLACEHOLDER_ANSWER_PATTERNS.some((pattern) => pattern.test(text));
+};
+const normalizeReadableAnswer = (value) => {
+  const text = String(value || '').trim();
+  return looksLikePlaceholderAnswer(text) ? '' : text;
+};
+const looksLikeMissingContentFeedback = (value) => {
+  const text = String(value || '').trim();
+  if (!text) return false;
+  return MISSING_CONTENT_FEEDBACK_PATTERNS.every((pattern) => pattern.test(text));
+};
 
 const appendMissingPoints = (feedbackText = '', missingPoints = '') => {
   const cleanFeedback = String(feedbackText || '').trim();
@@ -64,13 +88,14 @@ const runPostSubmissionAnalysis = async ({
     const submission = await Submission.findById(submissionId);
     if (!submission) return;
 
-    let derivedAnswer = String(answerText || '').trim();
+    let derivedAnswer = normalizeReadableAnswer(answerText);
 
     if (!derivedAnswer && isPdfUpload && filePath) {
       derivedAnswer = await extractSubmissionTextFromPdf(filePath);
+      derivedAnswer = normalizeReadableAnswer(derivedAnswer);
     }
 
-    if (derivedAnswer && !String(submission.answer || '').trim()) {
+    if (derivedAnswer && !normalizeReadableAnswer(submission.answer)) {
       submission.answer = derivedAnswer;
     }
 
@@ -90,8 +115,7 @@ const runPostSubmissionAnalysis = async ({
       return;
     }
 
-    const rawAnswerForEvaluation = derivedAnswer || `Student submitted file: ${originalFileName}`;
-    const answerForEvaluation = rawAnswerForEvaluation.slice(0, 20000);
+    const answerForEvaluation = derivedAnswer.slice(0, 20000);
     const aiResult = await evaluateAnswer(taskDescription, answerForEvaluation);
 
     submission.aiMarks = aiResult.marks;
@@ -122,7 +146,10 @@ const toClientSubmission = (submissionDoc) => {
   const storedPath = String(item.submissionFile || item.fileUrl || '');
   const submissionFile = path.posix.basename(storedPath.replace(/\\/g, '/'));
   const remarks = item.remarks || item.feedback || '';
-  const aiFeedback = item.aiFeedback || '';
+  const rawAiFeedback = item.aiFeedback || '';
+  const aiFeedback = looksLikeMissingContentFeedback(rawAiFeedback)
+    ? NO_READABLE_CONTENT_MESSAGE
+    : rawAiFeedback;
   const feedback = appendMissingPoints(remarks || aiFeedback, item.missingPoints || '');
   const inferredStatus =
     typeof item.marks === 'number' || item.evaluatedAt || evaluator ? 'evaluated' : 'pending';
@@ -384,12 +411,13 @@ exports.generateAiAssist = async (req, res) => {
       return res.status(403).json({ message: 'Not authorized to evaluate this submission' });
     }
 
-    let answerText = String(submission.answer || '').trim();
+    let answerText = normalizeReadableAnswer(submission.answer);
     if (!answerText) {
       const storedPath = normalizeStoredSubmissionPath(submission);
       const canExtractFromPdf = isPdfFile(submission.fileName) || isPdfFile(storedPath);
       if (canExtractFromPdf) {
         answerText = await extractSubmissionTextFromPdf(storedPath);
+        answerText = normalizeReadableAnswer(answerText);
       }
     }
 
@@ -409,14 +437,11 @@ exports.generateAiAssist = async (req, res) => {
       return res.status(422).json({ message: NO_READABLE_CONTENT_MESSAGE });
     }
 
-    if (!String(submission.answer || '').trim()) {
+    if (!normalizeReadableAnswer(submission.answer)) {
       submission.answer = answerText;
     }
 
-    const fallbackAnswer = submission.fileName
-      ? `Student uploaded file: ${submission.fileName}`
-      : 'No textual answer was provided.';
-    const answerForEvaluation = (answerText || fallbackAnswer).slice(0, 20000);
+    const answerForEvaluation = answerText.slice(0, 20000);
 
     const aiDraft = await evaluateDetailedAnswer(taskDoc.description, answerForEvaluation);
     const aiScore =
