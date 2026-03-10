@@ -29,24 +29,6 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       // Login flow has explicit error handling; ignore proactive warm-up failures.
     });
 
-    const storedUser = localStorage.getItem('dtep_user');
-    if (storedUser) {
-      try {
-        const parsed = JSON.parse(storedUser);
-        const token = String(parsed?.token || '');
-        const isJwtLike = token.split('.').length === 3;
-        if (!token || token.startsWith('mock_') || !isJwtLike) {
-          localStorage.removeItem('dtep_user');
-          emitAuthStateChanged();
-          setLoading(false);
-          return;
-        }
-        setUser(parsed);
-      } catch (e) {
-        localStorage.removeItem('dtep_user');
-        emitAuthStateChanged();
-      }
-    }
     setLoading(false);
   }, []);
 
