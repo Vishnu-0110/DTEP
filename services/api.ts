@@ -3,18 +3,38 @@ import axios, { AxiosError, InternalAxiosRequestConfig } from 'axios';
 
 const LOOPBACK_HOSTS = new Set(['localhost', '127.0.0.1', '::1']);
 const DEFAULT_TIMEOUT_MS = 30000;
+const LOGIN_TIMEOUT_MS = 12000;
 const DEFAULT_RETRY_MAX = 2;
 const DEFAULT_RETRY_DELAY_MS = 1200;
 const RETRYABLE_METHODS = new Set(['get', 'head', 'options']);
 const RETRY_COUNT_KEY = '__dtep_retry_count';
+const SKIP_RETRY_KEY = '__dtep_skip_retry';
 const WARMUP_ATTEMPTS = 2;
 const WARMUP_DELAY_MS = 900;
+const WARMUP_TIMEOUT_MS = 3500;
 
 const trimTrailingSlash = (value: string) => value.replace(/\/+$/, '');
 const wait = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
+const createTimeoutController = (ms: number) => {
+  if (typeof AbortController === 'undefined') {
+    return {
+      signal: undefined,
+      cancel: () => {},
+    };
+  }
+
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(), ms);
+
+  return {
+    signal: controller.signal,
+    cancel: () => clearTimeout(timer),
+  };
+};
 
 type RetryableRequestConfig = InternalAxiosRequestConfig & {
   [RETRY_COUNT_KEY]?: number;
+  [SKIP_RETRY_KEY]?: boolean;
 };
 
 const readNumberEnv = (key: string) =>
@@ -88,6 +108,7 @@ const resolveTimeoutMs = () => {
 };
 
 export const API_TIMEOUT_MS = resolveTimeoutMs();
+export const AUTH_LOGIN_TIMEOUT_MS = Math.min(API_TIMEOUT_MS, LOGIN_TIMEOUT_MS);
 export const API_RETRY_MAX = resolveNumberEnv('VITE_API_RETRY_MAX', DEFAULT_RETRY_MAX, 0, 5);
 export const API_RETRY_DELAY_MS = resolveNumberEnv(
   'VITE_API_RETRY_DELAY_MS',
@@ -125,6 +146,7 @@ const isNetworkLikeError = (error: AxiosError) => {
 
 const canRetryRequest = (config?: RetryableRequestConfig) => {
   if (!config) return false;
+  if (config[SKIP_RETRY_KEY]) return false;
   const method = String(config.method || 'get').toLowerCase();
   const url = String(config.url || '').toLowerCase();
   const isLoginRequest = url.includes('/auth/login');
@@ -140,15 +162,20 @@ export const warmupBackendConnection = async () => {
     if (!healthUrl || typeof fetch !== 'function') return;
 
     for (let attempt = 1; attempt <= WARMUP_ATTEMPTS; attempt += 1) {
+      const timeout = createTimeoutController(WARMUP_TIMEOUT_MS);
+
       try {
         const response = await fetch(`${healthUrl}?t=${Date.now()}`, {
           method: 'GET',
           cache: 'no-store',
+          signal: timeout.signal,
         });
 
         if (response.ok) return;
       } catch (_) {
         // Keep retrying quietly; login flow has its own visible error path if needed.
+      } finally {
+        timeout.cancel();
       }
 
       if (attempt < WARMUP_ATTEMPTS) {
@@ -223,3 +250,4 @@ api.interceptors.response.use(
 );
 
 export default api;
+export { SKIP_RETRY_KEY };

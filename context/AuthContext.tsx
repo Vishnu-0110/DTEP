@@ -1,7 +1,11 @@
 
 import React, { createContext, useContext, useState, useEffect, useCallback } from 'react';
 import { User, UserRole } from '../types';
-import api, { warmupBackendConnection } from '../services/api';
+import api, {
+  AUTH_LOGIN_TIMEOUT_MS,
+  SKIP_RETRY_KEY,
+  warmupBackendConnection
+} from '../services/api';
 
 export const AUTH_STATE_EVENT = 'dtep-auth-state-changed';
 
@@ -35,7 +39,14 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const login = useCallback(async (email: string, password: string, expectedRole: UserRole) => {
     try {
       await warmupBackendConnection();
-      const response = await api.post('/auth/login', { email, password, expectedRole });
+      const response = await api.post(
+        '/auth/login',
+        { email, password, expectedRole },
+        {
+          timeout: AUTH_LOGIN_TIMEOUT_MS,
+          [SKIP_RETRY_KEY]: true,
+        }
+      );
       const { _id, name, role, token } = response.data;
       
       const userData: User & { token: string } = {
