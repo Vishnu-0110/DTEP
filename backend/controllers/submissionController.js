@@ -147,8 +147,11 @@ const runPostSubmissionAnalysis = async ({
     submission.aiRawResponse = aiResult.raw;
     submission.evaluationDetails = buildEvaluationDetails(submission.evaluationDetails, {
       aiMarks: aiResult.marks,
+      aiRawMarks: typeof aiResult.rawMarks === 'number' ? aiResult.rawMarks : null,
+      structureScore: typeof aiResult.structureScore === 'number' ? aiResult.structureScore : null,
       aiFeedback: aiResult.feedback,
       missingPoints: aiResult.missingPoints,
+      sectionAnalysis: Array.isArray(aiResult.sectionAnalysis) ? aiResult.sectionAnalysis : [],
     });
 
     await submission.save();
@@ -496,9 +499,12 @@ exports.generateAiAssist = async (req, res) => {
     submission.aiRawResponse = aiDraft.raw;
     submission.evaluationDetails = buildEvaluationDetails(submission.evaluationDetails, {
       aiMarks: aiScore,
+      aiRawMarks: typeof aiDraft.rawScore === 'number' ? aiDraft.rawScore : null,
+      structureScore: typeof aiDraft.structureScore === 'number' ? aiDraft.structureScore : null,
       aiFeedback: submission.aiFeedback,
       missingPoints: submission.missingPoints || '',
       aiReport,
+      sectionAnalysis: Array.isArray(aiDraft.sectionAnalysis) ? aiDraft.sectionAnalysis : [],
     });
 
     await submission.save();
