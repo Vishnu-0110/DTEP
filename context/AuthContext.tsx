@@ -66,9 +66,15 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       const responseMessage = typeof error?.response?.data?.message === 'string'
         ? error.response.data.message
         : '';
+      const normalizedResponseMessage = responseMessage.trim().toLowerCase();
       const responseHeaders = error?.response?.headers || {};
       const vercelError = String(responseHeaders['x-vercel-error'] || '').trim().toUpperCase();
       const contentType = String(responseHeaders['content-type'] || '').trim().toLowerCase();
+      const isColdStartLikeStatus = status === 502 || status === 503 || status === 504;
+      const isColdStartLikeMessage =
+        normalizedResponseMessage.includes('timeout') ||
+        normalizedResponseMessage.includes('timed out') ||
+        normalizedResponseMessage.includes('upstream');
       
       if (!error.response) {
         const errorCode = String(error?.code || '').trim().toUpperCase();
@@ -77,6 +83,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         message = isTimeout
           ? 'Backend is starting (Render cold start) or too slow to respond. Wait 20-40 seconds and try login again.'
           : 'Network error: backend is offline or the API URL is misconfigured.';
+      } else if (isColdStartLikeStatus || isColdStartLikeMessage) {
+        message = 'Backend is starting (Render cold start) or too slow to respond. Wait 20-40 seconds and try login again.';
       } else if (
         status === 404 ||
         vercelError === 'NOT_FOUND' ||
