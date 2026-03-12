@@ -9,9 +9,9 @@ const DEFAULT_RETRY_DELAY_MS = 1200;
 const RETRYABLE_METHODS = new Set(['get', 'head', 'options']);
 const RETRY_COUNT_KEY = '__dtep_retry_count';
 const SKIP_RETRY_KEY = '__dtep_skip_retry';
-const WARMUP_ATTEMPTS = 2;
-const WARMUP_DELAY_MS = 900;
-const WARMUP_TIMEOUT_MS = 3500;
+const WARMUP_ATTEMPTS = 4;
+const WARMUP_DELAY_MS = 1200;
+const WARMUP_TIMEOUT_MS = 5000;
 
 const trimTrailingSlash = (value: string) => value.replace(/\/+$/, '');
 const wait = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
@@ -119,14 +119,15 @@ export const API_RETRY_DELAY_MS = resolveNumberEnv(
 
 const resolveHealthcheckUrl = () => {
   if (typeof window === 'undefined') return '';
-  if (API_BASE_URL.startsWith('/')) return '';
+
+  if (API_BASE_URL.startsWith('/')) {
+    const basePath = trimTrailingSlash(API_BASE_URL);
+    return `${basePath}/healthz`;
+  }
 
   try {
     const parsed = new URL(API_BASE_URL);
-    const path = parsed.pathname.endsWith('/api')
-      ? parsed.pathname.slice(0, -4)
-      : parsed.pathname;
-    return `${parsed.protocol}//${parsed.host}${trimTrailingSlash(path)}/healthz`;
+    return `${parsed.protocol}//${parsed.host}${trimTrailingSlash(parsed.pathname)}/healthz`;
   } catch (_) {
     return '';
   }

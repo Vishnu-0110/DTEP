@@ -82,14 +82,14 @@ app.use('/api/submissions', submissionRoutes);
 app.use('/api/stats', statsRoutes);
 app.use('/api/system', systemRoutes);
 
-app.get('/healthz', (req, res) => {
+app.get(['/healthz', '/api/healthz'], (req, res) => {
   return res.json({
     status: 'ok',
     ...buildStatusPayload(),
   });
 });
 
-app.get('/readyz', (req, res) => {
+app.get(['/readyz', '/api/readyz'], (req, res) => {
   const isReady = getDatabaseStatus() === 'connected' && fs.existsSync(uploadDir);
 
   return res.status(isReady ? 200 : 503).json({
