@@ -517,7 +517,7 @@ const Layout: React.FC = () => {
                         {(isStudent ? studentTaskNotifications.length > 0 : evaluatorSubmissionNotifications.length > 0) && (
                           <button
                             onClick={isStudent ? markAllStudentNotificationsRead : markAllEvaluatorNotificationsRead}
-                            className="text-[9px] font-black uppercase tracking-widest theme-text-primary hover:text-white transition-colors"
+                            className="rounded-lg border border-white/10 bg-adaptive-nested px-2.5 py-1 text-[9px] font-black uppercase tracking-widest theme-text-primary transition-colors hover:theme-bg-primary hover:text-white active:theme-bg-primary active:text-white"
                           >
                             Mark All Read
                           </button>
@@ -537,8 +537,8 @@ const Layout: React.FC = () => {
                                   onClick={() => handleStudentNotificationClick(notification)}
                                   className={`w-full text-left p-3 rounded-xl border transition-all ${
                                     notification.read
-                                      ? 'border-white/5 bg-black/5 dark:bg-white/5'
-                                      : 'border-blue-500/20 bg-blue-500/10'
+                                      ? 'border-white/10 bg-adaptive-nested hover:bg-black/5 dark:hover:bg-white/5'
+                                      : 'border-blue-500/20 bg-blue-500/10 hover:bg-blue-500/20'
                                   }`}
                                 >
                                   <p className="text-[11px] font-black text-adaptive-main tracking-tight line-clamp-1">
@@ -555,8 +555,8 @@ const Layout: React.FC = () => {
                                   onClick={() => handleEvaluatorNotificationClick(notification)}
                                   className={`w-full text-left p-3 rounded-xl border transition-all ${
                                     notification.read
-                                      ? 'border-white/5 bg-black/5 dark:bg-white/5'
-                                      : 'border-blue-500/20 bg-blue-500/10'
+                                      ? 'border-white/10 bg-adaptive-nested hover:bg-black/5 dark:hover:bg-white/5'
+                                      : 'border-blue-500/20 bg-blue-500/10 hover:bg-blue-500/20'
                                   }`}
                                 >
                                   <p className="text-[11px] font-black text-adaptive-main tracking-tight line-clamp-1">
