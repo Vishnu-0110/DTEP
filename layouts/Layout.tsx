@@ -75,7 +75,6 @@ const Layout: React.FC = () => {
   const [isThemeMenuOpen, setIsThemeMenuOpen] = useState(false);
   const [isNotificationMenuOpen, setIsNotificationMenuOpen] = useState(false);
   const [maintenanceStatus, setMaintenanceStatus] = useState<MaintenanceStatus | null>(null);
-  const [isMaintenanceLoading, setIsMaintenanceLoading] = useState(true);
   const [studentTaskNotifications, setStudentTaskNotifications] = useState<StudentTaskNotificationItem[]>(() => {
     if (typeof window === 'undefined') return [];
     try {
@@ -233,7 +232,6 @@ const Layout: React.FC = () => {
   useEffect(() => {
     if (!shouldEnforceMaintenance) {
       setMaintenanceStatus(null);
-      setIsMaintenanceLoading(false);
       return;
     }
 
@@ -282,13 +280,11 @@ const Layout: React.FC = () => {
         }
       } finally {
         if (!isCancelled) {
-          setIsMaintenanceLoading(false);
           scheduleNextPoll(hadNetworkError);
         }
       }
     };
 
-    setIsMaintenanceLoading(true);
     fetchMaintenanceStatus();
 
     return () => {
@@ -315,22 +311,6 @@ const Layout: React.FC = () => {
     { id: 'sunset', label: 'Sunset', color: 'bg-amber-500' },
     { id: 'slate', label: 'Slate', color: 'bg-slate-400' },
   ];
-
-  if (shouldEnforceMaintenance && isMaintenanceLoading) {
-    return (
-      <div className="min-h-screen flex items-center justify-center bg-app text-adaptive-main p-6">
-        <div className="glass-card rounded-[36px] border border-white/10 px-8 py-10 text-center max-w-lg w-full">
-          <div className="w-16 h-16 mx-auto rounded-3xl bg-adaptive-nested border border-white/10 flex items-center justify-center theme-text-primary shadow-sm">
-            <Wrench size={28} />
-          </div>
-          <h1 className="mt-6 text-2xl font-black tracking-tight">Checking Portal Status</h1>
-          <p className="mt-3 text-sm font-medium text-adaptive-sub">
-            Verifying whether the evaluator/student portal is currently available.
-          </p>
-        </div>
-      </div>
-    );
-  }
 
   if (shouldEnforceMaintenance && maintenanceStatus?.enabled) {
     const updatedAtLabel = maintenanceStatus.updatedAt

@@ -14,16 +14,10 @@ const Submissions = lazy(() => import('./pages/Submissions'));
 const TaskDetails = lazy(() => import('./pages/TaskDetails'));
 const Layout = lazy(() => import('./layouts/Layout'));
 
-const RouteLoading: React.FC = () => (
-  <div className="min-h-screen w-full flex items-center justify-center bg-app text-adaptive-sub">
-    <span className="text-xs font-black uppercase tracking-widest">Loading Interface...</span>
-  </div>
-);
-
 const ProtectedRoute: React.FC<{ children: React.ReactNode; allowedRoles?: string[] }> = ({ children, allowedRoles }) => {
   const { user, loading } = useAuth();
 
-  if (loading) return <div className="min-h-screen w-full flex items-center justify-center bg-slate-900 text-white">Loading...</div>;
+  if (loading) return null;
   if (!user) return <Navigate to="/login" replace />;
   if (allowedRoles && !allowedRoles.includes(user.role)) return <Navigate to="/dashboard" replace />;
 
@@ -41,7 +35,7 @@ const App: React.FC = () => {
     <ThemeProvider>
       <AuthProvider>
         <HashRouter>
-          <Suspense fallback={<RouteLoading />}>
+          <Suspense fallback={null}>
             <Routes>
               <Route path="/login" element={<Login />} />
               <Route path="/" element={<ProtectedRoute><Layout /></ProtectedRoute>}>

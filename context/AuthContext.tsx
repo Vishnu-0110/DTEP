@@ -132,16 +132,11 @@ const classifyLoginError = (error: any) => {
 };
 
 export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
-  const [user, setUser] = useState<User | null>(null);
-  const [loading, setLoading] = useState(true);
+  const [user, setUser] = useState<User | null>(() => readStoredUser());
+  const loading = false;
   const isDemoMode = false;
 
   useEffect(() => {
-    const storedUser = readStoredUser();
-    if (storedUser) {
-      setUser(storedUser);
-    }
-
     warmupBackendConnection().catch(() => {
       // Login flow has explicit error handling; ignore proactive warm-up failures.
     });
@@ -151,8 +146,6 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         // Keep-alive should be silent; login has its own explicit errors.
       });
     }, 4 * 60 * 1000);
-
-    setLoading(false);
 
     return () => {
       window.clearInterval(keepWarmTimer);
