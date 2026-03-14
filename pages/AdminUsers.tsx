@@ -1,7 +1,7 @@
 
 import React, { useState, useEffect } from 'react';
 import { UserRole } from '../types';
-import { Plus, Search, Trash2, Mail, User as UserIcon, Loader2, ShieldAlert, AlertCircle, Building, CheckCircle, Wrench } from 'lucide-react';
+import { Plus, Search, Trash2, Mail, User as UserIcon, Loader2, ShieldAlert, AlertCircle, Building, CheckCircle, Wrench, Eye, EyeOff } from 'lucide-react';
 import api from '../services/api';
 import { useAuth } from '../context/AuthContext';
 import ModalShell from '../components/ModalShell';
@@ -36,6 +36,7 @@ const AdminUsers: React.FC = () => {
   const [maintenanceMessage, setMaintenanceMessage] = useState('');
   const [maintenanceError, setMaintenanceError] = useState('');
   const [isSavingMaintenance, setIsSavingMaintenance] = useState(false);
+  const [showPassword, setShowPassword] = useState(false);
 
   const [formData, setFormData] = useState({
     name: '',
@@ -178,6 +179,7 @@ const AdminUsers: React.FC = () => {
 
       setTimeout(() => {
         setIsModalOpen(false);
+        setShowPassword(false);
         setSuccess('');
         setFormData({ name: '', email: '', password: '', role: UserRole.STUDENT, department: '' });
       }, 1500);
@@ -426,6 +428,7 @@ const AdminUsers: React.FC = () => {
         onClose={() => {
           if (!isSubmitting) {
             setIsModalOpen(false);
+            setShowPassword(false);
           }
         }}
       >
@@ -481,13 +484,24 @@ const AdminUsers: React.FC = () => {
 
             <div className="space-y-1">
               <label className="text-[9px] font-black text-adaptive-sub uppercase tracking-widest ml-1">Password</label>
-              <input 
-                type="password" 
-                required
-                value={formData.password}
-                onChange={e => setFormData({...formData, password: e.target.value})}
-                className="w-full surface-input rounded-xl py-3 px-4 transition-all font-medium text-sm" 
-              />
+              <div className="relative">
+                <input 
+                  type={showPassword ? 'text' : 'password'}
+                  required
+                  value={formData.password}
+                  onChange={e => setFormData({...formData, password: e.target.value})}
+                  className="w-full surface-input rounded-xl py-3 pl-4 pr-12 transition-all font-medium text-sm" 
+                />
+                <button
+                  type="button"
+                  onClick={() => setShowPassword((prev) => !prev)}
+                  disabled={isSubmitting}
+                  aria-label={showPassword ? 'Hide password' : 'Show password'}
+                  className="absolute inset-y-0 right-3 flex items-center text-adaptive-sub hover:text-adaptive-main transition-colors disabled:opacity-50"
+                >
+                  {showPassword ? <EyeOff size={16} /> : <Eye size={16} />}
+                </button>
+              </div>
             </div>
 
             <div className="flex flex-col sm:flex-row gap-3 pt-4">

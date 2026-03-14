@@ -107,7 +107,7 @@
             --glass-blur: 0px;
             --bg-nested: 30, 41, 59, 0.92;
             --bg-soft: 30, 41, 59, 0.88;
-            --overlay-scrim: 15, 23, 42, 1;
+            --overlay-scrim: 15, 23, 42, 0.45;
         }
 
         /* Light Mode Overrides */
@@ -120,7 +120,7 @@
             --border-main: 51, 65, 85, 0.22;
             --bg-nested: 226, 232, 240, 0.95;
             --bg-soft: 241, 245, 249, 1;
-            --overlay-scrim: 15, 23, 42, 1;
+            --overlay-scrim: 15, 23, 42, 0.25;
         }
 
         /* Theme Color Definitions */
@@ -146,7 +146,8 @@
 
         .modal-overlay {
             background: rgba(var(--overlay-scrim));
-            backdrop-filter: none;
+            backdrop-filter: blur(10px);
+            -webkit-backdrop-filter: blur(10px);
         }
 
         .modal-surface {

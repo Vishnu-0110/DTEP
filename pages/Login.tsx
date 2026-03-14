@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { UserRole } from '../types';
-import { Lock, Mail, ChevronRight } from 'lucide-react';
+import { Lock, Mail, ChevronRight, Eye, EyeOff } from 'lucide-react';
 import { getDefaultRouteForRole, getPreferredRouteForUser } from '../utils/navigationPersistence';
 
 const Login: React.FC = () => {
@@ -11,6 +11,7 @@ const Login: React.FC = () => {
   const [role, setRole] = useState<UserRole>(UserRole.STUDENT);
   const [error, setError] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [showPassword, setShowPassword] = useState(false);
   const { login } = useAuth();
   const navigate = useNavigate();
 
@@ -112,13 +113,22 @@ const Login: React.FC = () => {
                 <Lock size={18} />
               </div>
               <input
-                type="password"
+                type={showPassword ? 'text' : 'password'}
                 placeholder="Password"
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
                 disabled={isSubmitting}
-                className="w-full bg-adaptive-nested border border-white/10 rounded-2xl py-4 pl-14 pr-5 text-adaptive-main placeholder:text-adaptive-sub/50 focus:outline-none focus:ring-2 focus:theme-border-primary transition-all font-medium text-sm"
+                className="w-full bg-adaptive-nested border border-white/10 rounded-2xl py-4 pl-14 pr-14 text-adaptive-main placeholder:text-adaptive-sub/50 focus:outline-none focus:ring-2 focus:theme-border-primary transition-all font-medium text-sm"
               />
+              <button
+                type="button"
+                onClick={() => setShowPassword((prev) => !prev)}
+                disabled={isSubmitting}
+                aria-label={showPassword ? 'Hide password' : 'Show password'}
+                className="absolute inset-y-0 right-4 flex items-center text-adaptive-sub hover:text-adaptive-main transition-colors disabled:opacity-50"
+              >
+                {showPassword ? <EyeOff size={18} /> : <Eye size={18} />}
+              </button>
             </div>
           </div>
 
