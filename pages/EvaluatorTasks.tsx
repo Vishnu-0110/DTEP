@@ -60,10 +60,10 @@ const EvaluatorTasks: React.FC = () => {
       await api.post('/tasks', formData);
       
       setIsModalOpen(false);
-      setSuccess('Assignment deployed successfully.');
+      setSuccess('Assignment created successfully.');
       fetchTasks();
     } catch (err: any) {
-      setError(err.response?.data?.message || 'Error deploying assignment. Check network connectivity.');
+      setError(err.response?.data?.message || 'Error creating assignment. Check network connectivity.');
     }
   };
 
@@ -91,15 +91,15 @@ const EvaluatorTasks: React.FC = () => {
     <div className="space-y-6 lg:space-y-10 animate-in fade-in duration-500">
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
-          <h1 className="text-2xl sm:text-3xl lg:text-4xl font-black text-adaptive-main tracking-tighter uppercase italic">Academic Console</h1>
-          <p className="text-adaptive-sub font-medium text-sm sm:text-base">Review and orchestrate curriculum assignments.</p>
+          <h1 className="text-2xl sm:text-3xl lg:text-4xl font-black text-adaptive-main tracking-tighter uppercase italic">Assignments</h1>
+          <p className="text-adaptive-sub font-medium text-sm sm:text-base">Create and manage assignments.</p>
         </div>
         <button 
           onClick={() => { setError(''); setIsModalOpen(true); }}
           className="btn-primary px-6 py-4 rounded-2xl font-black text-[10px] uppercase tracking-widest flex items-center justify-center gap-2 transition-all active:scale-95 w-full sm:w-auto"
         >
           <Plus size={18} />
-          Deploy Assignment
+          Add Assignment
         </button>
       </div>
 
@@ -119,7 +119,7 @@ const EvaluatorTasks: React.FC = () => {
       {isLoading ? (
         <div className="flex flex-col items-center justify-center py-24 gap-4 bg-adaptive-nested/10 rounded-[40px] border border-dashed border-white/10">
           <Loader2 className="animate-spin theme-text-primary" size={40} />
-          <p className="text-adaptive-sub font-black uppercase tracking-widest text-[9px] animate-pulse">Scanning Grid Infrastructure</p>
+          <p className="text-adaptive-sub font-black uppercase tracking-widest text-[9px] animate-pulse">Loading assignments...</p>
         </div>
       ) : (
         <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4 lg:gap-6">
@@ -183,7 +183,7 @@ const EvaluatorTasks: React.FC = () => {
                 className="mt-8 w-full btn-secondary hover:theme-bg-primary hover:text-white font-black py-4 rounded-2xl flex items-center justify-center gap-3 transition-all group/btn shadow-sm active:scale-95 text-[9px] uppercase tracking-[0.2em] relative z-10"
               >
                 <ClipboardCheck size={18} className="theme-text-primary group-hover/btn:text-white transition-colors" />
-                Review Batch
+                Review Submissions
               </Link>
             </div>
             );
@@ -195,8 +195,8 @@ const EvaluatorTasks: React.FC = () => {
                 <ClipboardCheck size={40} />
               </div>
               <div className="space-y-2">
-                <p className="text-adaptive-main font-black uppercase tracking-widest text-sm">No Assignments Deployed</p>
-                <p className="text-adaptive-sub text-[10px] font-bold uppercase tracking-widest opacity-60 max-w-xs mx-auto leading-relaxed">Your curriculum pipeline is currently empty. Click 'Deploy Assignment' to begin student evaluation.</p>
+                <p className="text-adaptive-main font-black uppercase tracking-widest text-sm">No assignments yet</p>
+                <p className="text-adaptive-sub text-[10px] font-bold uppercase tracking-widest opacity-60 max-w-xs mx-auto leading-relaxed">Click 'Add Assignment' to create your first assignment.</p>
               </div>
             </div>
           )}

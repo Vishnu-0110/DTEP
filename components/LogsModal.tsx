@@ -65,8 +65,8 @@ const LogsModal: React.FC<LogsModalProps> = ({ isOpen, onClose }) => {
                 <Terminal size={28} />
               </div>
               <div className="min-w-0">
-                <h2 className="text-xl sm:text-2xl font-black text-adaptive-main tracking-tighter uppercase leading-none">Kernel Logs</h2>
-                <p className="text-adaptive-sub text-[10px] font-black uppercase tracking-[0.2em] mt-2">System Audit & Real-time Event Stream</p>
+                <h2 className="text-xl sm:text-2xl font-black text-adaptive-main tracking-tighter uppercase leading-none">Activity Logs</h2>
+                <p className="text-adaptive-sub text-[10px] font-black uppercase tracking-[0.2em] mt-2">System events and activity</p>
               </div>
             </div>
             <button 
@@ -81,11 +81,11 @@ const LogsModal: React.FC<LogsModalProps> = ({ isOpen, onClose }) => {
           <div className="px-4 sm:px-8 py-4 sm:py-5 border-b border-white/5 bg-adaptive-nested/50 flex flex-wrap gap-3 sm:gap-6 shrink-0">
             <div className="flex items-center gap-2 text-[10px] font-black uppercase tracking-widest text-adaptive-sub">
               <div className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></div>
-              System Health: Optimal
+              System Health: Good
             </div>
             <div className="flex items-center gap-2 text-[10px] font-black uppercase tracking-widest text-adaptive-sub">
               <Activity size={12} className="theme-text-primary" />
-              Events: {logs.length} Recorded
+              Events: {logs.length}
             </div>
             <div className="flex items-center gap-2 text-[10px] font-black uppercase tracking-widest text-adaptive-sub">
               <ShieldCheck size={12} className="text-purple-500 dark:text-purple-400" />
@@ -137,13 +137,13 @@ const LogsModal: React.FC<LogsModalProps> = ({ isOpen, onClose }) => {
           {/* Footer */}
           <div className="p-4 sm:p-6 bg-adaptive-nested border-t border-white/5 flex flex-col sm:flex-row justify-between items-center shrink-0 gap-4">
             <p className="text-[9px] font-black text-adaptive-sub uppercase tracking-widest italic opacity-60 text-center sm:text-left">
-              End of stream. Logs are immutable and retained for 90 days.
+              End of logs. Stored for 90 days.
             </p>
             <button 
               className="text-[10px] font-black theme-text-primary uppercase tracking-widest hover:brightness-110 active:scale-95 transition-all"
               onClick={() => window.print()}
             >
-              Export Archive
+              Export Logs
             </button>
           </div>
       </div>

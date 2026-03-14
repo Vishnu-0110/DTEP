@@ -62,7 +62,7 @@ const Login: React.FC = () => {
           <h1 className="text-3xl sm:text-4xl font-black tracking-tighter mb-2 text-adaptive-main">
             DTE PORTAL
           </h1>
-          <p className="text-adaptive-sub font-black text-[10px] uppercase tracking-[0.4em]">Enterprise Access Terminal</p>
+          <p className="text-adaptive-sub font-black text-[10px] uppercase tracking-[0.4em]">Sign in to your account</p>
         </div>
 
         {error && (
@@ -73,7 +73,7 @@ const Login: React.FC = () => {
 
         <form onSubmit={handleSubmit} className="space-y-6">
           <div className="space-y-3">
-            <label className="text-[10px] font-black text-adaptive-sub uppercase tracking-widest ml-1">Access Tier</label>
+            <label className="text-[10px] font-black text-adaptive-sub uppercase tracking-widest ml-1">Role</label>
             <div className="grid grid-cols-1 min-[380px]:grid-cols-3 gap-2 p-1.5 bg-adaptive-nested rounded-2xl border border-white/5">
               {(Object.values(UserRole)).map((r) => (
                 <button
@@ -99,7 +99,7 @@ const Login: React.FC = () => {
               </div>
               <input
                 type="email"
-                placeholder="Email Identifier"
+                placeholder="Email"
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
                 disabled={isSubmitting}
@@ -113,7 +113,7 @@ const Login: React.FC = () => {
               </div>
               <input
                 type="password"
-                placeholder="Security Phrase"
+                placeholder="Password"
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
                 disabled={isSubmitting}
@@ -127,7 +127,7 @@ const Login: React.FC = () => {
             disabled={isSubmitting}
             className={`w-full theme-bg-primary hover:opacity-90 text-white font-black py-4 rounded-2xl shadow-xl theme-shadow-primary flex items-center justify-center gap-3 group transition-all active:scale-[0.98] uppercase text-[11px] tracking-[0.2em] ${isSubmitting ? 'opacity-70 cursor-not-allowed' : ''}`}
           >
-            {isSubmitting ? 'Verifying...' : 'Authenticate'}
+            {isSubmitting ? 'Signing in...' : 'Sign In'}
             {!isSubmitting && <ChevronRight size={18} className="group-hover:translate-x-1 transition-transform" />}
           </button>
         </form>

@@ -85,7 +85,7 @@ const TaskDetails: React.FC = () => {
     return (
       <div className="h-full w-full flex flex-col items-center justify-center py-40 gap-4">
         <Loader2 className="animate-spin theme-text-primary" size={48} />
-        <p className="text-adaptive-sub font-black uppercase tracking-widest text-xs animate-pulse">Accessing Curriculum Vault</p>
+        <p className="text-adaptive-sub font-black uppercase tracking-widest text-xs animate-pulse">Loading task details...</p>
       </div>
     );
   }
@@ -94,13 +94,13 @@ const TaskDetails: React.FC = () => {
     <div className="max-w-4xl mx-auto space-y-6 sm:space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-500 pb-10">
       <Link to="/student/tasks" className="flex items-center gap-2 text-adaptive-sub hover:theme-text-primary transition-all group w-fit">
         <ArrowLeft size={18} className="group-hover:-translate-x-1 transition-transform" />
-        <span className="text-[10px] font-black uppercase tracking-[0.2em]">Dashboard Core</span>
+        <span className="text-[10px] font-black uppercase tracking-[0.2em]">Back to Assignments</span>
       </Link>
 
       <div className="glass-card rounded-[32px] sm:rounded-[48px] p-5 sm:p-10 lg:p-14 border border-white/10 shadow-2xl relative overflow-hidden">
         <div className="absolute top-0 right-0 p-8 hidden sm:block">
             <div className="bg-blue-600/10 text-blue-400 px-4 py-2 rounded-xl text-[9px] font-black uppercase tracking-widest border border-blue-500/10">
-                Tier: CS-ADV
+                Course Task
             </div>
         </div>
 
@@ -116,7 +116,7 @@ const TaskDetails: React.FC = () => {
                 <Clock size={20} />
               </div>
               <div>
-                <p className="text-[9px] font-black text-adaptive-sub uppercase tracking-widest">Final Lock</p>
+                <p className="text-[9px] font-black text-adaptive-sub uppercase tracking-widest">Deadline</p>
                 <p className="text-sm font-bold text-adaptive-main">{formatDeadlineDateTime(task?.deadline)}</p>
                 <p className={`text-[9px] font-black uppercase tracking-widest mt-1 ${task?.deadline && new Date(task.deadline).getTime() < nowMs ? 'text-rose-500' : 'theme-text-primary'}`}>
                   {formatCountdown(task?.deadline, nowMs)}
@@ -128,8 +128,8 @@ const TaskDetails: React.FC = () => {
                 <FileText size={20} />
               </div>
               <div>
-                <p className="text-[9px] font-black text-adaptive-sub uppercase tracking-widest">Document Format</p>
-                <p className="text-sm font-bold text-adaptive-main">PDF / ARCHIVE</p>
+                <p className="text-[9px] font-black text-adaptive-sub uppercase tracking-widest">File Format</p>
+                <p className="text-sm font-bold text-adaptive-main">PDF / DOC / DOCX</p>
               </div>
             </div>
           </div>
@@ -159,7 +159,7 @@ const TaskDetails: React.FC = () => {
                 {/* Strengths */}
                 <div className="bg-emerald-500/5 border border-emerald-500/10 rounded-3xl p-6 space-y-4">
                   <h4 className="text-[10px] font-black text-emerald-500 uppercase tracking-[0.2em] flex items-center gap-2">
-                    <CheckCircle size={14} /> Domain Strengths
+                    <CheckCircle size={14} /> Strengths
                   </h4>
                   <ul className="space-y-2">
                     {submission.aiReport.strengths.map((item, idx) => (
@@ -173,7 +173,7 @@ const TaskDetails: React.FC = () => {
                 {/* Weaknesses */}
                 <div className="bg-rose-500/5 border border-rose-500/10 rounded-3xl p-6 space-y-4">
                   <h4 className="text-[10px] font-black text-rose-500 uppercase tracking-[0.2em] flex items-center gap-2">
-                    <AlertTriangle size={14} /> Growth Areas
+                    <AlertTriangle size={14} /> Needs Improvement
                   </h4>
                   <ul className="space-y-2">
                     {submission.aiReport.weaknesses.map((item, idx) => (
@@ -187,7 +187,7 @@ const TaskDetails: React.FC = () => {
                 {/* Improvements */}
                 <div className="bg-blue-500/5 border border-blue-500/10 rounded-3xl p-6 space-y-4">
                   <h4 className="text-[10px] font-black theme-text-primary uppercase tracking-[0.2em] flex items-center gap-2">
-                    <TrendingUp size={14} /> Optimization Plan
+                    <TrendingUp size={14} /> Suggestions
                   </h4>
                   <ul className="space-y-2">
                     {submission.aiReport.improvements.map((item, idx) => (
@@ -201,7 +201,7 @@ const TaskDetails: React.FC = () => {
 
               {submission.feedback && (
                 <div className="bg-adaptive-nested/30 border border-white/5 rounded-3xl p-6">
-                  <p className="text-[9px] font-black text-adaptive-sub uppercase tracking-widest mb-3">Evaluator Commentary</p>
+                  <p className="text-[9px] font-black text-adaptive-sub uppercase tracking-widest mb-3">Evaluator Feedback</p>
                   <p className="text-sm font-medium text-adaptive-main leading-relaxed italic opacity-80">
                     "{submission.feedback}"
                   </p>
@@ -239,7 +239,7 @@ const TaskDetails: React.FC = () => {
                 className={`flex-1 sm:flex-none theme-bg-primary hover:opacity-95 text-white font-black py-4 px-10 rounded-2xl shadow-xl theme-shadow-primary transition-all flex items-center justify-center gap-3 active:scale-95 uppercase tracking-widest text-[10px] ${downloading ? 'opacity-70' : ''}`}
             >
                 {downloading ? <Loader2 size={18} className="animate-spin" /> : downloaded ? <CheckCircle size={18} /> : <Download size={18} />}
-                {downloading ? 'Preparing...' : downloaded ? 'Vault Ready' : 'Download Resources'}
+                {downloading ? 'Preparing...' : downloaded ? 'Ready' : 'Download Resources'}
             </button>
             <Link to="/student/tasks" className="flex-1 sm:flex-none border border-white/10 bg-adaptive-nested/50 hover:bg-adaptive-nested text-adaptive-sub hover:text-adaptive-main font-black py-4 px-10 rounded-2xl transition-all flex items-center justify-center text-[10px] uppercase tracking-widest">
                 {submission ? 'View Submission' : 'Submit Solution'}

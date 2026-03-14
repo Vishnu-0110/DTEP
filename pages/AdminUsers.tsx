@@ -59,7 +59,7 @@ const AdminUsers: React.FC = () => {
           { _id: 'mock_stud_1', name: 'John Doe', email: 'student@dtep.com', role: 'student', department: 'Engineering' },
         ]);
       } else {
-        setError('Connection to directory failed. Ensure backend is active.');
+        setError('Could not load users. Ensure backend is active.');
       }
     } finally {
       setIsLoading(false);
@@ -197,15 +197,15 @@ const AdminUsers: React.FC = () => {
     <div className="space-y-6 lg:space-y-8 animate-in fade-in duration-500">
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
-          <h1 className="text-2xl sm:text-3xl font-black text-adaptive-main tracking-tighter">Identity Store</h1>
-          <p className="text-adaptive-sub text-sm font-medium">Platform authorization directory.</p>
+          <h1 className="text-2xl sm:text-3xl font-black text-adaptive-main tracking-tighter">User Management</h1>
+          <p className="text-adaptive-sub text-sm font-medium">Manage user accounts.</p>
         </div>
         <button 
           onClick={() => { setError(''); setSuccess(''); setIsModalOpen(true); }}
           className="bg-blue-600 hover:bg-blue-500 text-white px-6 py-4 rounded-2xl font-black text-xs uppercase tracking-widest flex items-center justify-center gap-2 transition-all shadow-xl active:scale-95 w-full sm:w-auto"
         >
           <Plus size={18} />
-          Create Entity
+          Add User
         </button>
       </div>
 
@@ -239,7 +239,7 @@ const AdminUsers: React.FC = () => {
                 Maintenance Control
               </h3>
               <p className="text-[10px] text-adaptive-sub font-bold uppercase tracking-widest mt-1">
-                Real-time student and evaluator broadcast
+                Shown to students and evaluators in real time
               </p>
             </div>
             <button
@@ -275,7 +275,7 @@ const AdminUsers: React.FC = () => {
               isSavingMaintenance ? 'opacity-70 cursor-not-allowed' : ''
             }`}
           >
-            {isSavingMaintenance ? 'Saving...' : 'Apply Maintenance Status'}
+            {isSavingMaintenance ? 'Saving...' : 'Save Maintenance Settings'}
           </button>
         </div>
       )}
@@ -284,7 +284,7 @@ const AdminUsers: React.FC = () => {
         <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-500" size={18} />
         <input
           type="text"
-          placeholder="Filter by identifier..."
+          placeholder="Search by name or email..."
           value={searchTerm}
           onChange={(e) => setSearchTerm(e.target.value)}
           className="w-full bg-adaptive-nested border border-white/5 rounded-2xl py-4 pl-12 pr-4 text-adaptive-main focus:outline-none focus:ring-2 focus:theme-border-primary transition-all font-medium text-sm"
@@ -295,11 +295,11 @@ const AdminUsers: React.FC = () => {
         {isLoading ? (
           <div className="flex flex-col items-center justify-center p-10 sm:p-16 gap-4">
             <Loader2 className="animate-spin theme-text-primary" size={40} />
-            <p className="text-adaptive-sub font-black uppercase tracking-widest text-[9px] animate-pulse">Fetching Nodes</p>
+            <p className="text-adaptive-sub font-black uppercase tracking-widest text-[9px] animate-pulse">Loading users...</p>
           </div>
         ) : filteredUsers.length === 0 ? (
           <div className="px-6 py-16 sm:py-20 text-center text-adaptive-sub font-bold text-xs uppercase tracking-widest opacity-40">
-            Null Dataset
+            No users found
           </div>
         ) : (
           <>
@@ -326,7 +326,7 @@ const AdminUsers: React.FC = () => {
 
                     <div className="grid grid-cols-1 min-[380px]:grid-cols-2 gap-3">
                       <div>
-                        <p className="text-[8px] font-black text-adaptive-sub uppercase tracking-widest mb-1">Authority</p>
+                        <p className="text-[8px] font-black text-adaptive-sub uppercase tracking-widest mb-1">Role</p>
                         <span className={`inline-flex px-2.5 py-1 rounded-lg text-[8px] font-black uppercase tracking-widest border transition-all duration-300 ${
                           u.role === 'admin' ? 'bg-purple-500/10 text-purple-500 border-purple-500/10' :
                           u.role === 'evaluator' ? 'bg-amber-500/10 text-amber-500 border-amber-500/10' : 'bg-blue-500/10 text-blue-500 border-blue-500/10'
@@ -335,7 +335,7 @@ const AdminUsers: React.FC = () => {
                         </span>
                       </div>
                       <div>
-                        <p className="text-[8px] font-black text-adaptive-sub uppercase tracking-widest mb-1">Unit</p>
+                        <p className="text-[8px] font-black text-adaptive-sub uppercase tracking-widest mb-1">Department</p>
                         <div className="text-[11px] font-bold text-adaptive-sub break-words">{u.department || 'GLOBAL'}</div>
                       </div>
                     </div>
@@ -361,9 +361,9 @@ const AdminUsers: React.FC = () => {
                 <thead>
                   <tr className="border-b border-white/5 bg-adaptive-nested/50">
                     <th className="px-6 py-4 text-[9px] font-black text-adaptive-sub uppercase tracking-widest">Profile</th>
-                    <th className="px-6 py-4 text-[9px] font-black text-adaptive-sub uppercase tracking-widest">Authority</th>
-                    <th className="px-6 py-4 text-[9px] font-black text-adaptive-sub uppercase tracking-widest">Unit</th>
-                    <th className="px-6 py-4 text-[9px] font-black text-adaptive-sub uppercase tracking-widest text-right">Ops</th>
+                    <th className="px-6 py-4 text-[9px] font-black text-adaptive-sub uppercase tracking-widest">Role</th>
+                    <th className="px-6 py-4 text-[9px] font-black text-adaptive-sub uppercase tracking-widest">Department</th>
+                    <th className="px-6 py-4 text-[9px] font-black text-adaptive-sub uppercase tracking-widest text-right">Actions</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-white/5">
@@ -430,11 +430,11 @@ const AdminUsers: React.FC = () => {
         }}
       >
         <div className="modal-surface rounded-3xl p-6 sm:p-8 w-full max-w-md max-h-[calc(100dvh-2rem)] sm:max-h-[90vh] overflow-y-auto custom-scrollbar animate-in zoom-in-95 duration-300">
-          <h2 className="text-xl font-black text-adaptive-main tracking-tighter mb-6 uppercase">Provision Account</h2>
+          <h2 className="text-xl font-black text-adaptive-main tracking-tighter mb-6 uppercase">Add User</h2>
           
           <form className="space-y-4" onSubmit={handleCreateUser}>
             <div className="space-y-1">
-              <label className="text-[9px] font-black text-adaptive-sub uppercase tracking-widest ml-1">Entity Name</label>
+              <label className="text-[9px] font-black text-adaptive-sub uppercase tracking-widest ml-1">Name</label>
               <input 
                 type="text" 
                 required
@@ -446,7 +446,7 @@ const AdminUsers: React.FC = () => {
 
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
               <div className="space-y-1">
-                <label className="text-[9px] font-black text-adaptive-sub uppercase tracking-widest ml-1">Classification</label>
+                <label className="text-[9px] font-black text-adaptive-sub uppercase tracking-widest ml-1">Role</label>
                 <select 
                   value={formData.role}
                   onChange={e => setFormData({...formData, role: e.target.value as UserRole})}
@@ -469,7 +469,7 @@ const AdminUsers: React.FC = () => {
             </div>
 
             <div className="space-y-1">
-              <label className="text-[9px] font-black text-adaptive-sub uppercase tracking-widest ml-1">Email Endpoint</label>
+              <label className="text-[9px] font-black text-adaptive-sub uppercase tracking-widest ml-1">Email</label>
               <input 
                 type="email" 
                 required
@@ -480,7 +480,7 @@ const AdminUsers: React.FC = () => {
             </div>
 
             <div className="space-y-1">
-              <label className="text-[9px] font-black text-adaptive-sub uppercase tracking-widest ml-1">Security Phrase</label>
+              <label className="text-[9px] font-black text-adaptive-sub uppercase tracking-widest ml-1">Password</label>
               <input 
                 type="password" 
                 required
@@ -497,14 +497,14 @@ const AdminUsers: React.FC = () => {
                 onClick={() => setIsModalOpen(false)} 
                 className="flex-1 py-3.5 btn-secondary rounded-xl font-black text-[9px] uppercase tracking-widest transition-all"
               >
-                Discard
+                Cancel
               </button>
               <button 
                 type="submit" 
                 disabled={isSubmitting}
                 className="flex-1 btn-primary rounded-xl py-3.5 transition-all flex items-center justify-center gap-2 px-6 uppercase text-[9px] tracking-widest active:scale-95"
               >
-                {isSubmitting ? <Loader2 size={16} className="animate-spin" /> : 'Confirm Build'}
+                {isSubmitting ? <Loader2 size={16} className="animate-spin" /> : 'Create User'}
               </button>
             </div>
           </form>

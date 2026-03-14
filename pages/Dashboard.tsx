@@ -222,7 +222,7 @@ const Dashboard: React.FC = () => {
           </div>
           <div className="text-sm">
             <p className="font-black uppercase tracking-widest text-[9px] mb-0.5">Sandbox Mode</p>
-            <p className="font-medium opacity-80 leading-snug">Visualizing high-fidelity simulated kernel data.</p>
+            <p className="font-medium opacity-80 leading-snug">Showing demo data.</p>
           </div>
         </div>
       )}
@@ -241,12 +241,12 @@ const Dashboard: React.FC = () => {
 
       <div className="flex flex-col md:flex-row md:items-end justify-between gap-4">
         <div>
-          <h1 className="text-2xl sm:text-3xl lg:text-5xl font-black text-adaptive-main tracking-tighter leading-tight">Performance Index</h1>
-          <p className="text-adaptive-sub mt-1 text-sm sm:text-lg font-medium">Platform-wide analytical session metrics.</p>
+          <h1 className="text-2xl sm:text-3xl lg:text-5xl font-black text-adaptive-main tracking-tighter leading-tight">Dashboard</h1>
+          <p className="text-adaptive-sub mt-1 text-sm sm:text-lg font-medium">Overview of your tasks and submissions.</p>
         </div>
         <div className="hidden sm:flex items-center gap-2 bg-adaptive-nested px-4 py-2 rounded-2xl border border-white/10 shadow-sm">
           <span className="w-2 h-2 bg-emerald-500 rounded-full animate-pulse"></span>
-          <span className="text-[10px] font-black text-adaptive-main uppercase tracking-widest">Systems Nominal</span>
+          <span className="text-[10px] font-black text-adaptive-main uppercase tracking-widest">System Online</span>
         </div>
       </div>
 
@@ -270,7 +270,7 @@ const Dashboard: React.FC = () => {
               <p className="text-adaptive-sub text-sm font-medium max-w-2xl">{chartCopy.description}</p>
             </div>
             <div className="px-4 py-2 rounded-2xl bg-adaptive-nested border border-white/10 text-[10px] font-black uppercase tracking-[0.2em] theme-text-primary">
-              Live Snapshot
+              Current Snapshot
             </div>
           </div>
 
@@ -348,13 +348,13 @@ const Dashboard: React.FC = () => {
 
         {user?.role === 'admin' && (
           <div className="glass-card p-6 sm:p-8 rounded-3xl lg:rounded-[40px] shadow-sm border border-white/10 flex flex-col min-h-[400px]">
-            <h3 className="text-lg sm:text-xl font-black text-adaptive-main tracking-tight mb-6">Internal Queue</h3>
+            <h3 className="text-lg sm:text-xl font-black text-adaptive-main tracking-tight mb-6">Recent Activity</h3>
             <div className="space-y-3.5 flex-1">
               {[
-                { label: 'Kernel Sync', time: '5m', color: 'bg-emerald-500' },
-                { label: 'Asset Check', time: '18m', color: 'bg-amber-500' },
-                { label: 'Auth Purge', time: '1h', color: 'bg-rose-500' },
-                { label: 'Shard Load', time: '2h', color: 'theme-bg-primary' }
+                { label: 'Data Sync', time: '5m', color: 'bg-emerald-500' },
+                { label: 'File Check', time: '18m', color: 'bg-amber-500' },
+                { label: 'Auth Cleanup', time: '1h', color: 'bg-rose-500' },
+                { label: 'Server Load', time: '2h', color: 'theme-bg-primary' }
               ].map((task, i) => (
                 <div key={i} className="flex items-center gap-4 p-4 bg-adaptive-nested rounded-2xl border border-white/10 hover:theme-border-primary transition-all cursor-pointer group active:scale-[0.98]">
                   <div className={`w-2 h-2 rounded-full ${task.color} shrink-0 shadow-sm`}></div>
@@ -370,7 +370,7 @@ const Dashboard: React.FC = () => {
               onClick={() => setIsLogsOpen(true)}
               className="w-full mt-8 py-4 bg-adaptive-nested hover:theme-bg-primary hover:text-white rounded-2xl text-[9px] font-black uppercase tracking-[0.2em] text-adaptive-sub transition-all border border-white/10 active:scale-95 shadow-sm"
             >
-              Kernel Audit Logs
+              Activity Logs
             </button>
           </div>
         )}

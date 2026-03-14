@@ -47,7 +47,7 @@ const TaskModal: React.FC<TaskModalProps> = ({ isOpen, onClose, onSubmit }) => {
                </div>
                <div>
                   <h2 className="text-lg sm:text-xl font-black text-adaptive-main tracking-tight leading-none">Create Task</h2>
-                  <p className="text-adaptive-sub text-[9px] font-black uppercase tracking-widest mt-1.5">Design New Curriculum</p>
+                  <p className="text-adaptive-sub text-[9px] font-black uppercase tracking-widest mt-1.5">Create a new assignment</p>
                </div>
             </div>
             <button onClick={handleClose} className="p-2 text-adaptive-sub hover:text-adaptive-main hover:bg-black/5 dark:hover:bg-white/5 rounded-xl transition-all active:scale-90">
@@ -74,7 +74,7 @@ const TaskModal: React.FC<TaskModalProps> = ({ isOpen, onClose, onSubmit }) => {
             <div className="space-y-1.5">
               <div className="flex items-center gap-2 ml-1 mb-1">
                  <Edit3 size={12} className="theme-text-primary" />
-                 <label className="text-[10px] font-black text-adaptive-sub uppercase tracking-widest">Rubric & Instructions</label>
+                 <label className="text-[10px] font-black text-adaptive-sub uppercase tracking-widest">Description & Instructions</label>
               </div>
               <textarea 
                 rows={3}
@@ -89,7 +89,7 @@ const TaskModal: React.FC<TaskModalProps> = ({ isOpen, onClose, onSubmit }) => {
             <div className="space-y-1.5">
               <div className="flex items-center gap-2 ml-1 mb-1">
                  <Calendar size={12} className="theme-text-primary" />
-                 <label className="text-[10px] font-black text-adaptive-sub uppercase tracking-widest">Deadline (Local Sync)</label>
+                 <label className="text-[10px] font-black text-adaptive-sub uppercase tracking-widest">Deadline</label>
               </div>
               <input 
                 type="datetime-local" 
@@ -101,8 +101,8 @@ const TaskModal: React.FC<TaskModalProps> = ({ isOpen, onClose, onSubmit }) => {
             </div>
 
             <div className="flex flex-col sm:flex-row gap-3 pt-2">
-              <button type="button" onClick={handleClose} className="flex-1 btn-secondary rounded-xl py-3 font-black text-[9px] uppercase tracking-widest transition-all active:scale-95 order-2 sm:order-1">Discard Draft</button>
-              <button type="submit" className="flex-1 btn-primary rounded-xl py-3 font-black transition-all text-[9px] uppercase tracking-[0.2em] active:scale-95 order-1 sm:order-2">Publish Assignment</button>
+              <button type="button" onClick={handleClose} className="flex-1 btn-secondary rounded-xl py-3 font-black text-[9px] uppercase tracking-widest transition-all active:scale-95 order-2 sm:order-1">Cancel</button>
+              <button type="submit" className="flex-1 btn-primary rounded-xl py-3 font-black transition-all text-[9px] uppercase tracking-[0.2em] active:scale-95 order-1 sm:order-2">Create Assignment</button>
             </div>
           </form>
       </div>

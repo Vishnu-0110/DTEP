@@ -165,7 +165,7 @@ const StudentTasks: React.FC = () => {
             : t
         )
       );
-      setSuccessMessage(`PDF uploaded successfully: ${uploadedFileName}`);
+      setSuccessMessage(`File uploaded successfully: ${uploadedFileName}`);
       setTimeout(() => setSuccessMessage(''), 4000);
       
       setTimeout(() => {
@@ -214,8 +214,8 @@ const StudentTasks: React.FC = () => {
     <div className="space-y-6 lg:space-y-10 animate-in fade-in duration-500">
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
-          <h1 className="text-2xl sm:text-3xl font-black text-adaptive-main tracking-tighter">My Workload</h1>
-          <p className="text-adaptive-sub font-medium text-sm sm:text-base">Current academic assignments and evaluation status.</p>
+          <h1 className="text-2xl sm:text-3xl font-black text-adaptive-main tracking-tighter">My Assignments</h1>
+          <p className="text-adaptive-sub font-medium text-sm sm:text-base">Current assignments and review status.</p>
         </div>
         <div className="grid grid-cols-1 min-[420px]:grid-cols-2 gap-3 w-full sm:w-auto">
           <div className="glass-card px-4 py-2 rounded-2xl text-[9px] font-black uppercase tracking-widest border-l-4 border-l-emerald-500 flex items-center justify-center gap-2">
@@ -245,7 +245,7 @@ const StudentTasks: React.FC = () => {
       {isLoading ? (
         <div className="flex flex-col items-center justify-center py-20 gap-4">
           <Loader2 className="animate-spin theme-text-primary" size={40} />
-          <p className="text-adaptive-sub font-black uppercase tracking-widest text-[9px] animate-pulse">Syncing Vault</p>
+          <p className="text-adaptive-sub font-black uppercase tracking-widest text-[9px] animate-pulse">Loading assignments...</p>
         </div>
       ) : (
         <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4 lg:gap-6">
@@ -274,7 +274,7 @@ const StudentTasks: React.FC = () => {
 
               <h3 className="text-xl font-black text-adaptive-main mb-2 tracking-tight group-hover:theme-text-primary transition-colors line-clamp-1">{task.title}</h3>
               <p className="text-[11px] text-adaptive-sub mb-8 font-bold flex items-center gap-1.5 opacity-80 italic">
-                 By {task.teacher || 'Primary Evaluator'}
+                 By {task.teacher || 'Evaluator'}
               </p>
 
               <div className="mt-auto space-y-6">
@@ -335,7 +335,7 @@ const StudentTasks: React.FC = () => {
                   </div>
                 ) : (
                   <div className="w-full bg-adaptive-nested text-adaptive-sub font-black py-4 rounded-2xl text-center text-[9px] uppercase tracking-widest opacity-40 italic">
-                    Access Revoked (Expired)
+                    Deadline Passed
                   </div>
                 )}
               </div>
@@ -358,7 +358,7 @@ const StudentTasks: React.FC = () => {
             <div className="w-14 h-14 bg-blue-500/10 rounded-2xl flex items-center justify-center text-blue-500 mx-auto mb-4 border border-blue-500/10 shadow-sm">
               <Upload size={24} />
             </div>
-            <h2 className="text-2xl font-black text-adaptive-main tracking-tighter uppercase leading-none">Submit Archive</h2>
+            <h2 className="text-2xl font-black text-adaptive-main tracking-tighter uppercase leading-none">Submit Assignment</h2>
             <p className="text-adaptive-sub text-[10px] font-black uppercase tracking-widest mt-2">{selectedTask?.title}</p>
           </div>
 
@@ -377,7 +377,7 @@ const StudentTasks: React.FC = () => {
                     {selectedFile ? <CheckCircle2 size={24} /> : <FileText size={24} />}
                   </span>
                   <span className="font-bold text-adaptive-main tracking-tight text-sm break-all text-center">
-                    {selectedFile ? selectedFile.name : 'Select Submission Node'}
+                    {selectedFile ? selectedFile.name : 'Select file to upload'}
                   </span>
                   <span className="text-[9px] text-adaptive-sub font-black uppercase tracking-widest opacity-60">
                     PDF, DOCX (Max 10MB)
@@ -389,7 +389,7 @@ const StudentTasks: React.FC = () => {
             <textarea
               value={answerText}
               onChange={(e) => setAnswerText(e.target.value)}
-              placeholder="Optional: paste student's textual answer for AI evaluation quality."
+              placeholder="Optional: paste answer text for better AI review."
               rows={4}
               className="w-full bg-adaptive-nested border border-white/10 rounded-2xl py-3 px-4 text-sm text-adaptive-main focus:outline-none focus:theme-border-primary transition-all custom-scrollbar resize-none"
             />
@@ -400,14 +400,14 @@ const StudentTasks: React.FC = () => {
                 disabled={uploading}
                 className="flex-1 py-4 btn-secondary rounded-2xl font-black uppercase tracking-widest text-[9px] transition-all"
               >
-                Discard
+                Cancel
               </button>
               <button 
                 onClick={handleUpload}
                 disabled={!selectedFile || uploading}
                 className={`flex-1 btn-primary rounded-2xl py-4 transition-all flex items-center justify-center gap-2 px-8 text-[9px] uppercase tracking-widest ${(!selectedFile || uploading) ? 'opacity-30 cursor-not-allowed' : 'active:scale-95'}`}
               >
-                {uploading ? <Loader2 size={16} className="animate-spin" /> : 'Confirm Archive'}
+                {uploading ? <Loader2 size={16} className="animate-spin" /> : 'Submit'}
               </button>
             </div>
           </div>

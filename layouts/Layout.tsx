@@ -369,7 +369,7 @@ const Layout: React.FC = () => {
               <h1 className="text-2xl lg:text-3xl font-black tracking-tighter italic text-adaptive-main drop-shadow-[0_1px_0_rgba(255,255,255,0.08)]">
                 DTE <span className="theme-text-primary">PORTAL</span>
               </h1>
-              <p className="text-[10px] font-black uppercase tracking-[0.3em] theme-text-primary mt-1">Enterprise Evaluation</p>
+              <p className="text-[10px] font-black uppercase tracking-[0.3em] theme-text-primary mt-1">Task Portal</p>
             </Link>
             <button className="lg:hidden text-adaptive-sub p-2 hover:bg-black/5 dark:hover:bg-white/5 rounded-xl transition-colors active:scale-90" onClick={() => setIsSidebarOpen(false)}>
               <X size={24} />
@@ -417,10 +417,10 @@ const Layout: React.FC = () => {
               <Menu size={24} />
             </button>
             <div className="hidden sm:flex flex-col">
-              <h2 className="text-[10px] font-black text-adaptive-sub uppercase tracking-widest leading-none mb-1">Status</h2>
+              <h2 className="text-[10px] font-black text-adaptive-sub uppercase tracking-widest leading-none mb-1">System</h2>
               <div className="flex items-center gap-1.5 font-bold text-xs theme-text-primary">
                 <span className="w-1.5 h-1.5 rounded-full theme-bg-primary animate-pulse"></span>
-                LIVE CORE
+                ONLINE
               </div>
             </div>
           </div>
@@ -443,12 +443,12 @@ const Layout: React.FC = () => {
                     className="p-2 sm:p-2.5 text-adaptive-sub hover:theme-text-primary transition-all bg-black/5 dark:bg-white/5 rounded-xl border border-white/5 flex items-center gap-2 group active:scale-95"
                 >
                     <Palette size={18} className="group-hover:rotate-12 transition-transform" />
-                    <span className="hidden md:inline text-[9px] font-black uppercase tracking-widest">Interface</span>
+                    <span className="hidden md:inline text-[9px] font-black uppercase tracking-widest">Theme</span>
                 </button>
                 
                 {isThemeMenuOpen && (
                     <div className="absolute top-14 right-0 w-44 max-w-[calc(100vw-1rem)] glass-card rounded-2xl p-2.5 shadow-2xl border border-white/10 z-20 animate-in fade-in zoom-in-95 duration-200">
-                        <p className="text-[9px] font-black text-adaptive-sub uppercase tracking-[0.2em] mb-2 px-2">Visual Core</p>
+                        <p className="text-[9px] font-black text-adaptive-sub uppercase tracking-[0.2em] mb-2 px-2">Choose Theme</p>
                         <div className="space-y-0.5">
                             {themes.map((t) => (
                                 <button 

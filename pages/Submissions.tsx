@@ -324,11 +324,11 @@ const Submissions: React.FC = () => {
     <div className="space-y-6 lg:space-y-10 animate-in fade-in duration-500 pb-10">
       <div className="flex flex-col md:flex-row md:items-end justify-between gap-4">
         <div className="space-y-1">
-          <p className="text-[10px] font-black theme-text-primary uppercase tracking-[0.4em]">Batch ID: {taskId?.slice(-6)}</p>
+          <p className="text-[10px] font-black theme-text-primary uppercase tracking-[0.4em]">Task ID: {taskId?.slice(-6)}</p>
           <h1 className="text-2xl sm:text-3xl lg:text-4xl font-black text-adaptive-main tracking-tighter uppercase leading-none">
-            {task?.title || 'Review Vault'}
+            {task?.title || 'Review Submissions'}
           </h1>
-          <p className="text-adaptive-sub text-sm font-medium">Verify methodology and authorize performance metrics.</p>
+          <p className="text-adaptive-sub text-sm font-medium">Review submissions and assign marks.</p>
         </div>
         <div className="grid grid-cols-2 gap-3 bg-adaptive-nested/50 p-2 rounded-2xl border border-white/5 w-full min-[420px]:w-fit">
              <div className="px-4 py-2 rounded-xl bg-app border border-white/5 text-center min-w-0">
@@ -348,12 +348,12 @@ const Submissions: React.FC = () => {
           {isLoading ? (
             <div className="flex flex-col items-center justify-center py-20 gap-4 bg-adaptive-nested/20 rounded-[32px] border border-dashed border-white/10">
               <Loader2 className="animate-spin theme-text-primary" size={40} />
-              <p className="text-adaptive-sub font-black uppercase tracking-widest text-[9px] animate-pulse">Scanning Archive</p>
+              <p className="text-adaptive-sub font-black uppercase tracking-widest text-[9px] animate-pulse">Loading submissions...</p>
             </div>
           ) : submissions.length === 0 ? (
             <div className="glass-card p-10 sm:p-20 rounded-[32px] text-center border-dashed border-white/10 flex flex-col items-center justify-center gap-4">
               <Search size={32} className="opacity-10" />
-              <p className="text-adaptive-sub font-bold text-xs uppercase tracking-widest">No transmissions detected.</p>
+              <p className="text-adaptive-sub font-bold text-xs uppercase tracking-widest">No submissions found.</p>
             </div>
           ) : (
             submissions.map((sub) => {
@@ -420,9 +420,9 @@ const Submissions: React.FC = () => {
             <div className="glass-card p-5 sm:p-10 rounded-[32px] sm:rounded-[40px] shadow-2xl animate-in slide-in-from-right-8 duration-500 border border-white/10">
               <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between mb-8">
                 <div className="space-y-1">
-                  <p className="text-[9px] font-black theme-text-primary uppercase tracking-widest">Active Focus</p>
+                  <p className="text-[9px] font-black theme-text-primary uppercase tracking-widest">Selected Submission</p>
                   <h2 className="text-2xl font-black text-adaptive-main tracking-tighter uppercase leading-none">
-                    Terminal
+                    Review
                   </h2>
                 </div>
                 <div className={`w-12 h-12 rounded-2xl flex items-center justify-center border shadow-lg ${isEvaluated ? 'bg-emerald-500/10 text-emerald-400 border-emerald-500/10' : 'bg-adaptive-nested text-adaptive-sub border-white/5'}`}>
@@ -462,7 +462,7 @@ const Submissions: React.FC = () => {
                 <div className="space-y-3">
                   <div className="flex items-center justify-between px-1">
                     <label className="text-[9px] font-black text-adaptive-sub uppercase tracking-widest">Grade (0-100)</label>
-                    <span className="text-[8px] font-black theme-text-primary uppercase tracking-widest bg-blue-500/10 px-2 py-0.5 rounded">Numeric Input</span>
+                    <span className="text-[8px] font-black theme-text-primary uppercase tracking-widest bg-blue-500/10 px-2 py-0.5 rounded">Number</span>
                   </div>
                   <input 
                     type="number" 
@@ -482,7 +482,7 @@ const Submissions: React.FC = () => {
 
                 <div className="space-y-3">
                   <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 px-1">
-                    <label className="text-[9px] font-black text-adaptive-sub uppercase tracking-widest">Feedback & Analysis</label>
+                    <label className="text-[9px] font-black text-adaptive-sub uppercase tracking-widest">Feedback</label>
                     {!isEvaluated && !isMissedSubmission && (
                       <button 
                         onClick={getAIEvaluation}
@@ -490,7 +490,7 @@ const Submissions: React.FC = () => {
                         className="text-[8px] flex items-center gap-2 font-black theme-text-primary hover:text-white transition-all uppercase tracking-widest bg-blue-500/10 hover:theme-bg-primary px-3 py-2 rounded-lg active:scale-95 disabled:opacity-50 shadow-sm"
                       >
                         {isAILoading ? <Loader2 size={12} className="animate-spin" /> : <Sparkles size={12} />}
-                        {isAILoading ? 'Processing AI...' : 'AI Assist'}
+                        {isAILoading ? 'Running AI...' : 'AI Assist'}
                       </button>
                     )}
                   </div>
@@ -501,7 +501,7 @@ const Submissions: React.FC = () => {
                       value={feedback}
                       onChange={(e) => setFeedback(e.target.value)}
                       disabled={isEvaluated || isSubmitting}
-                      placeholder="Technical commentary and rubric feedback..."
+                      placeholder="Write feedback..."
                       className={`w-full bg-adaptive-nested border-2 border-white/5 rounded-3xl py-4 px-5 text-sm text-adaptive-main focus:outline-none focus:theme-border-primary transition-all custom-scrollbar resize-none leading-relaxed ${isEvaluated ? 'opacity-50 cursor-not-allowed border-emerald-500/20' : ''}`}
                     ></textarea>
                   </div>
@@ -526,7 +526,7 @@ const Submissions: React.FC = () => {
                 {isEvaluated ? (
                   <div className="w-full bg-emerald-500/5 border border-emerald-500/20 text-emerald-400 font-black uppercase tracking-[0.2em] py-5 rounded-2xl flex items-center justify-center gap-2.5 shadow-sm text-[10px]">
                     <ShieldCheck size={20} />
-                    Evaluation Sealed
+                    Evaluation Completed
                   </div>
                 ) : (
                   <button 
@@ -535,7 +535,7 @@ const Submissions: React.FC = () => {
                     className={`w-full theme-bg-primary hover:opacity-95 text-white font-black uppercase tracking-[0.2em] py-5 rounded-2xl shadow-xl theme-shadow-primary flex items-center justify-center gap-2.5 transition-all active:scale-[0.98] text-[10px] ${isSubmitting ? 'opacity-70' : ''}`}
                   >
                     {isSubmitting ? <Loader2 size={20} className="animate-spin" /> : <CheckCircle size={20} />}
-                    Finalize Record
+                    Save Evaluation
                   </button>
                 )}
               </div>
@@ -545,8 +545,8 @@ const Submissions: React.FC = () => {
               <div className="w-20 h-20 bg-adaptive-nested/50 rounded-3xl flex items-center justify-center text-adaptive-sub mb-6 border border-white/5 shadow-inner">
                 <Target size={32} className="opacity-10" />
               </div>
-              <h3 className="text-lg font-black text-adaptive-sub tracking-tight uppercase">Ready for Analysis</h3>
-              <p className="text-[10px] text-adaptive-sub mt-2 max-w-[180px] leading-relaxed font-bold uppercase tracking-widest opacity-40">Select a submission from the directory to begin the evaluation session.</p>
+              <h3 className="text-lg font-black text-adaptive-sub tracking-tight uppercase">Ready to Review</h3>
+              <p className="text-[10px] text-adaptive-sub mt-2 max-w-[180px] leading-relaxed font-bold uppercase tracking-widest opacity-40">Select a submission from the list to start reviewing.</p>
             </div>
           )}
         </div>
