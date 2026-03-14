@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { UserRole } from '../types';
-import { Lock, Mail, ChevronRight, Info } from 'lucide-react';
+import { Lock, Mail, ChevronRight } from 'lucide-react';
 import { getDefaultRouteForRole, getPreferredRouteForUser } from '../utils/navigationPersistence';
 
 const Login: React.FC = () => {
@@ -46,12 +46,6 @@ const Login: React.FC = () => {
     } finally {
       setIsSubmitting(false);
     }
-  };
-
-  const quickFill = (e: string, p: string, r: UserRole) => {
-    setEmail(e);
-    setPassword(p);
-    setRole(r);
   };
 
   return (
@@ -138,28 +132,6 @@ const Login: React.FC = () => {
           </button>
         </form>
 
-        <div className="mt-12 pt-8 border-t border-white/5">
-          <div className="flex items-center gap-2 text-adaptive-sub text-[10px] font-black uppercase tracking-widest mb-5">
-            <Info size={14} className="theme-text-primary" />
-            Quick Account Fill
-          </div>
-          <div className="grid grid-cols-1 min-[420px]:grid-cols-3 gap-3">
-            {[
-              { label: 'Admin', email: 'admin@dtep.com', pass: 'admin12345', role: UserRole.ADMIN },
-              { label: 'Evaluator', email: 'evaluator@dtep.com', pass: 'evaluator12345', role: UserRole.EVALUATOR },
- 
-              { label: 'Student', email: 'student@dtep.com', pass: 'student12345', role: UserRole.STUDENT },
-            ].map((demo) => (
-              <button 
-                key={demo.label}
-                onClick={() => quickFill(demo.email, demo.pass, demo.role)}
-                className="px-2 py-3 bg-adaptive-nested hover:theme-bg-primary hover:text-white border border-white/5 rounded-xl text-[9px] font-black text-adaptive-sub uppercase tracking-tighter transition-all active:scale-95 shadow-sm"
-              >
-                {demo.label}
-              </button>
-            ))}
-          </div>
-        </div>
       </div>
     </div>
   );
