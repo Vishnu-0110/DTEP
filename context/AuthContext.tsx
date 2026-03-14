@@ -19,6 +19,35 @@ const SESSION_VALIDATION_INTERVAL_MS = 15000;
 const wait = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
 const getLoginRetryDelay = (attempt: number) =>
   Math.min(LOGIN_AUTO_RETRY_DELAY_BASE_MS * attempt, LOGIN_AUTO_RETRY_DELAY_MAX_MS);
+const VALID_ROLES = new Set<UserRole>([UserRole.ADMIN, UserRole.EVALUATOR, UserRole.STUDENT]);
+
+type StoredUser = User & { token: string };
+
+const readStoredUser = (): StoredUser | null => {
+  if (typeof window === 'undefined') return null;
+
+  try {
+    const raw = localStorage.getItem('dtep_user');
+    if (!raw) return null;
+
+    const parsed = JSON.parse(raw);
+    const id = String(parsed?.id || '').trim();
+    const name = String(parsed?.name || '').trim();
+    const email = String(parsed?.email || '').trim();
+    const role = String(parsed?.role || '').trim().toLowerCase() as UserRole;
+    const token = String(parsed?.token || '').trim();
+
+    if (!id || !name || !email || !token || !VALID_ROLES.has(role)) {
+      localStorage.removeItem('dtep_user');
+      return null;
+    }
+
+    return { id, name, email, role, token };
+  } catch (_) {
+    localStorage.removeItem('dtep_user');
+    return null;
+  }
+};
 
 interface AuthContextType {
   user: User | null;
@@ -108,6 +137,11 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const isDemoMode = false;
 
   useEffect(() => {
+    const storedUser = readStoredUser();
+    if (storedUser) {
+      setUser(storedUser);
+    }
+
     warmupBackendConnection().catch(() => {
       // Login flow has explicit error handling; ignore proactive warm-up failures.
     });

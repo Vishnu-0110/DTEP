@@ -13,7 +13,26 @@ const MODE_KEY = 'dtep_mode';
 const USER_THEME_PREFIX = 'dtep_theme_user';
 const USER_MODE_PREFIX = 'dtep_mode_user';
 
-const getCurrentHash = () => (typeof window === 'undefined' ? '' : window.location.hash || '#/');
+const hasStoredUserSession = () => {
+  if (typeof window === 'undefined') return false;
+
+  try {
+    const raw = localStorage.getItem('dtep_user');
+    if (!raw) return false;
+    const parsed = JSON.parse(raw);
+    const hasId = String(parsed?.id || '').trim().length > 0;
+    const hasToken = String(parsed?.token || '').trim().length > 0;
+    return hasId && hasToken;
+  } catch (_) {
+    return false;
+  }
+};
+
+const getCurrentHash = () => {
+  if (typeof window === 'undefined') return '';
+  if (window.location.hash) return window.location.hash;
+  return hasStoredUserSession() ? '#/' : '#/login';
+};
 const isThemeType = (value: string): value is ThemeType =>
   value === 'midnight' || value === 'emerald' || value === 'cyberpunk' || value === 'sunset' || value === 'slate';
 const isColorMode = (value: string): value is ColorMode => value === 'light' || value === 'dark';
