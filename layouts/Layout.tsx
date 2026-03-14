@@ -74,6 +74,7 @@ const Layout: React.FC = () => {
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
   const [isThemeMenuOpen, setIsThemeMenuOpen] = useState(false);
   const [isNotificationMenuOpen, setIsNotificationMenuOpen] = useState(false);
+  const [isProfileMenuOpen, setIsProfileMenuOpen] = useState(false);
   const [maintenanceStatus, setMaintenanceStatus] = useState<MaintenanceStatus | null>(null);
   const [studentTaskNotifications, setStudentTaskNotifications] = useState<StudentTaskNotificationItem[]>(() => {
     if (typeof window === 'undefined') return [];
@@ -103,6 +104,7 @@ const Layout: React.FC = () => {
   const location = useLocation();
   const notificationMenuRef = useRef<HTMLDivElement | null>(null);
   const themeMenuRef = useRef<HTMLDivElement | null>(null);
+  const profileMenuRef = useRef<HTMLDivElement | null>(null);
 
   const isStudent = user?.role === 'student';
   const isEvaluator = user?.role === 'evaluator';
@@ -112,6 +114,9 @@ const Layout: React.FC = () => {
   const unreadNotificationCount = isStudent
     ? unreadStudentTaskCount
     : (isEvaluator ? unreadEvaluatorSubmissionCount : 0);
+  const roleLabel = user?.role
+    ? `${user.role.charAt(0).toUpperCase()}${user.role.slice(1)}`
+    : 'User';
 
   useBodyScrollLock(isSidebarOpen);
 
@@ -179,6 +184,7 @@ const Layout: React.FC = () => {
   useEffect(() => {
     setIsThemeMenuOpen(false);
     setIsNotificationMenuOpen(false);
+    setIsProfileMenuOpen(false);
   }, [location.pathname]);
 
   useEffect(() => {
@@ -187,17 +193,19 @@ const Layout: React.FC = () => {
   }, [location.pathname, user?.id]);
 
   useEffect(() => {
-    if (!isNotificationMenuOpen && !isThemeMenuOpen) return;
+    if (!isNotificationMenuOpen && !isThemeMenuOpen && !isProfileMenuOpen) return;
 
     const handlePointerDown = (event: MouseEvent | TouchEvent) => {
       const target = event.target as Node | null;
       if (!target) return;
       const inNotificationMenu = Boolean(notificationMenuRef.current?.contains(target));
       const inThemeMenu = Boolean(themeMenuRef.current?.contains(target));
+      const inProfileMenu = Boolean(profileMenuRef.current?.contains(target));
 
-      if (!inNotificationMenu && !inThemeMenu) {
+      if (!inNotificationMenu && !inThemeMenu && !inProfileMenu) {
         setIsNotificationMenuOpen(false);
         setIsThemeMenuOpen(false);
+        setIsProfileMenuOpen(false);
       }
     };
 
@@ -205,6 +213,7 @@ const Layout: React.FC = () => {
       if (event.key === 'Escape') {
         setIsNotificationMenuOpen(false);
         setIsThemeMenuOpen(false);
+        setIsProfileMenuOpen(false);
       }
     };
 
@@ -217,7 +226,7 @@ const Layout: React.FC = () => {
       document.removeEventListener('touchstart', handlePointerDown, true);
       document.removeEventListener('keydown', handleEscape, true);
     };
-  }, [isNotificationMenuOpen, isThemeMenuOpen]);
+  }, [isNotificationMenuOpen, isProfileMenuOpen, isThemeMenuOpen]);
 
   useEffect(() => {
     if (typeof window === 'undefined') return;
@@ -439,6 +448,7 @@ const Layout: React.FC = () => {
                     onClick={() => {
                       setIsThemeMenuOpen((prev) => !prev);
                       setIsNotificationMenuOpen(false);
+                      setIsProfileMenuOpen(false);
                     }}
                     className="p-2 sm:p-2.5 text-adaptive-sub hover:theme-text-primary transition-all bg-black/5 dark:bg-white/5 rounded-xl border border-white/5 flex items-center gap-2 group active:scale-95"
                 >
@@ -474,6 +484,7 @@ const Layout: React.FC = () => {
                   onClick={() => {
                     setIsNotificationMenuOpen((prev) => !prev);
                     setIsThemeMenuOpen(false);
+                    setIsProfileMenuOpen(false);
                   }}
                   className="relative p-2 sm:p-2.5 text-adaptive-sub hover:theme-text-primary transition-all bg-black/5 dark:bg-white/5 rounded-xl border border-white/5 active:scale-95"
                   aria-label={isStudent ? 'Student notifications' : 'Evaluator notifications'}
@@ -554,14 +565,64 @@ const Layout: React.FC = () => {
               </div>
             ) : null}
             
-            <div className="flex min-w-0 items-center gap-2 sm:gap-3 bg-black/5 dark:bg-white/5 pl-1.5 sm:pl-4 pr-1 py-1 rounded-2xl border border-white/5">
+            <div className="relative" ref={profileMenuRef}>
+              <button
+                type="button"
+                onClick={() => {
+                  setIsProfileMenuOpen((prev) => !prev);
+                  setIsThemeMenuOpen(false);
+                  setIsNotificationMenuOpen(false);
+                }}
+                aria-haspopup="menu"
+                aria-expanded={isProfileMenuOpen}
+                aria-label="Open profile menu"
+                className="flex min-w-0 items-center gap-2 sm:gap-3 bg-black/5 dark:bg-white/5 pl-1.5 sm:pl-4 pr-1 py-1 rounded-2xl border border-white/5 transition-colors hover:bg-black/10 dark:hover:bg-white/10"
+              >
                 <div className="text-right hidden sm:block">
-                    <p className="text-[11px] font-black text-adaptive-main leading-none truncate max-w-[80px]">{user?.name}</p>
-                    <p className="text-[9px] font-black theme-text-primary uppercase tracking-tighter mt-1">{user?.role}</p>
+                  <p className="text-[11px] font-black text-adaptive-main leading-none truncate max-w-[110px]">{user?.name}</p>
+                  <p className="text-[9px] font-black theme-text-primary uppercase tracking-tighter mt-1">{roleLabel}</p>
                 </div>
-                <div className="w-9 h-9 sm:w-10 sm:h-10 rounded-xl bg-gradient-to-br from-[rgb(var(--primary))] to-[rgb(var(--accent))] flex items-center justify-center font-black text-white text-sm border border-white/20 shadow-lg shrink-0">
-                    {user?.name?.charAt(0)}
+                <div className="w-9 h-9 sm:w-10 sm:h-10 rounded-xl bg-gradient-to-br from-[rgb(var(--primary))] to-[rgb(var(--accent))] border border-white/20 shadow-lg shrink-0 overflow-hidden flex items-center justify-center">
+                  {user?.profilePhoto ? (
+                    <img
+                      src={user.profilePhoto}
+                      alt={`${user.name} profile`}
+                      className="w-full h-full object-cover"
+                    />
+                  ) : (
+                    <span className="font-black text-white text-sm">{user?.name?.charAt(0)}</span>
+                  )}
                 </div>
+              </button>
+
+              {isProfileMenuOpen && (
+                <div
+                  role="menu"
+                  className="absolute top-14 right-0 w-[calc(100vw-1rem)] max-w-[280px] glass-card rounded-2xl p-4 shadow-2xl border border-white/10 z-20 animate-in fade-in zoom-in-95 duration-200"
+                >
+                  <div className="flex items-center gap-3">
+                    <div className="w-12 h-12 rounded-xl bg-adaptive-nested border border-white/10 overflow-hidden flex items-center justify-center shrink-0">
+                      {user?.profilePhoto ? (
+                        <img
+                          src={user.profilePhoto}
+                          alt={`${user.name} profile`}
+                          className="w-full h-full object-cover"
+                        />
+                      ) : (
+                        <span className="font-black text-adaptive-main text-base">{user?.name?.charAt(0)}</span>
+                      )}
+                    </div>
+                    <div className="min-w-0">
+                      <p className="text-sm font-black text-adaptive-main truncate">{user?.name}</p>
+                      <p className="text-[10px] font-bold text-adaptive-sub truncate">{user?.email}</p>
+                    </div>
+                  </div>
+                  <div className="mt-3 pt-3 border-t border-white/10">
+                    <p className="text-[9px] font-black uppercase tracking-widest text-adaptive-sub">Role</p>
+                    <p className="text-[11px] font-bold text-adaptive-main mt-1">{roleLabel}</p>
+                  </div>
+                </div>
+              )}
             </div>
           </div>
         </header>

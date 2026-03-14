@@ -43,7 +43,8 @@ const AdminUsers: React.FC = () => {
     email: '',
     password: '',
     role: UserRole.STUDENT,
-    department: ''
+    department: '',
+    profilePhoto: '',
   });
 
   const fetchUsers = async () => {
@@ -181,7 +182,7 @@ const AdminUsers: React.FC = () => {
         setIsModalOpen(false);
         setShowPassword(false);
         setSuccess('');
-        setFormData({ name: '', email: '', password: '', role: UserRole.STUDENT, department: '' });
+        setFormData({ name: '', email: '', password: '', role: UserRole.STUDENT, department: '', profilePhoto: '' });
       }, 1500);
     } catch (err: any) {
       setError(err.response?.data?.message || 'Failed to create user. Email may already be in use.');
@@ -203,7 +204,7 @@ const AdminUsers: React.FC = () => {
           <p className="text-adaptive-sub text-sm font-medium">Manage user accounts.</p>
         </div>
         <button 
-          onClick={() => { setError(''); setSuccess(''); setIsModalOpen(true); }}
+          onClick={() => { setError(''); setSuccess(''); setShowPassword(false); setIsModalOpen(true); }}
           className="bg-blue-600 hover:bg-blue-500 text-white px-6 py-4 rounded-2xl font-black text-xs uppercase tracking-widest flex items-center justify-center gap-2 transition-all shadow-xl active:scale-95 w-full sm:w-auto"
         >
           <Plus size={18} />
@@ -315,7 +316,11 @@ const AdminUsers: React.FC = () => {
                   <div key={id} className="rounded-3xl border border-white/5 bg-adaptive-nested/40 p-4 space-y-4">
                     <div className="flex items-start gap-3">
                       <div className={`w-11 h-11 rounded-xl flex items-center justify-center border shadow-sm shrink-0 transition-colors duration-300 ${isSelf ? 'theme-bg-primary text-white border-transparent' : 'bg-adaptive-nested text-adaptive-sub border-white/5'}`}>
-                        <UserIcon size={18} />
+                        {u.profilePhoto ? (
+                          <img src={u.profilePhoto} alt={`${u.name} profile`} className="w-full h-full object-cover rounded-xl" />
+                        ) : (
+                          <UserIcon size={18} />
+                        )}
                       </div>
                       <div className="min-w-0 flex-1">
                         <div className="font-bold text-adaptive-main tracking-tight text-sm break-words flex items-center gap-1.5 flex-wrap">
@@ -378,8 +383,12 @@ const AdminUsers: React.FC = () => {
                       <tr key={id} className="hover:bg-black/5 dark:hover:bg-white/5 transition-all group">
                         <td className="px-6 py-4">
                           <div className="flex items-center gap-3">
-                            <div className={`w-10 h-10 rounded-xl flex items-center justify-center border shadow-sm shrink-0 transition-colors duration-300 ${isSelf ? 'theme-bg-primary text-white border-transparent' : 'bg-adaptive-nested text-adaptive-sub border-white/5'}`}>
-                              <UserIcon size={18} />
+                          <div className={`w-10 h-10 rounded-xl flex items-center justify-center border shadow-sm shrink-0 transition-colors duration-300 ${isSelf ? 'theme-bg-primary text-white border-transparent' : 'bg-adaptive-nested text-adaptive-sub border-white/5'}`}>
+                              {u.profilePhoto ? (
+                                <img src={u.profilePhoto} alt={`${u.name} profile`} className="w-full h-full object-cover rounded-xl" />
+                              ) : (
+                                <UserIcon size={18} />
+                              )}
                             </div>
                             <div className="min-w-0">
                               <div className="font-bold text-adaptive-main tracking-tight truncate text-sm flex items-center gap-1.5">
@@ -504,11 +513,22 @@ const AdminUsers: React.FC = () => {
               </div>
             </div>
 
+            <div className="space-y-1">
+              <label className="text-[9px] font-black text-adaptive-sub uppercase tracking-widest ml-1">Profile Photo URL (Optional)</label>
+              <input 
+                type="url"
+                value={formData.profilePhoto}
+                onChange={e => setFormData({...formData, profilePhoto: e.target.value})}
+                placeholder="https://example.com/photo.jpg"
+                className="w-full surface-input rounded-xl py-3 px-4 transition-all font-medium text-sm"
+              />
+            </div>
+
             <div className="flex flex-col sm:flex-row gap-3 pt-4">
               <button 
                 type="button" 
                 disabled={isSubmitting}
-                onClick={() => setIsModalOpen(false)} 
+                onClick={() => { setIsModalOpen(false); setShowPassword(false); }} 
                 className="flex-1 py-3.5 btn-secondary rounded-xl font-black text-[9px] uppercase tracking-widest transition-all"
               >
                 Cancel

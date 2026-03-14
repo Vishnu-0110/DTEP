@@ -9,18 +9,29 @@ const generateToken = (id, sessionVersion) => {
   });
 };
 
+const normalizeProfilePhoto = (value) => String(value || '').trim();
+
 exports.registerUser = async (req, res) => {
-  const { name, email, password, role, department } = req.body;
+  const { name, email, password, role, department, profilePhoto } = req.body;
   try {
     const userExists = await User.findOne({ email });
     if (userExists) return res.status(400).json({ message: 'User already exists' });
 
-    const user = await User.create({ name, email, password, role, department, sessionVersion: 1 });
+    const user = await User.create({
+      name,
+      email,
+      password,
+      role,
+      department,
+      profilePhoto: normalizeProfilePhoto(profilePhoto),
+      sessionVersion: 1,
+    });
     res.status(201).json({
       _id: user._id,
       name: user.name,
       email: user.email,
       role: user.role,
+      profilePhoto: user.profilePhoto || '',
       token: generateToken(user._id, user.sessionVersion),
     });
   } catch (error) {
@@ -57,6 +68,7 @@ exports.loginUser = async (req, res) => {
         name: updatedUser.name,
         email: updatedUser.email,
         role: updatedUser.role,
+        profilePhoto: updatedUser.profilePhoto || '',
         token: generateToken(updatedUser._id, Number(updatedUser.sessionVersion || 0)),
       });
     } else {

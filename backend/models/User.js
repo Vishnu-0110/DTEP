@@ -32,6 +32,11 @@ const userSchema = new mongoose.Schema(
       default: '',
       trim: true,
     },
+    profilePhoto: {
+      type: String,
+      default: '',
+      trim: true,
+    },
     sessionVersion: {
       type: Number,
       default: 0,
