@@ -3,7 +3,7 @@ import axios, { AxiosError, InternalAxiosRequestConfig } from 'axios';
 
 const LOOPBACK_HOSTS = new Set(['localhost', '127.0.0.1', '::1']);
 const DEFAULT_TIMEOUT_MS = 30000;
-const LOGIN_TIMEOUT_MS = 12000;
+const LOGIN_TIMEOUT_MS = 30000;
 const DEFAULT_RETRY_MAX = 2;
 const DEFAULT_RETRY_DELAY_MS = 1200;
 const RETRYABLE_METHODS = new Set(['get', 'head', 'options']);

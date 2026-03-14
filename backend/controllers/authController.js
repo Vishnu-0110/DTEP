@@ -3,8 +3,8 @@ const User = require('../models/User');
 const jwt = require('jsonwebtoken');
 const mongoose = require('mongoose');
 
-const generateToken = (id) => {
-  return jwt.sign({ id }, process.env.JWT_SECRET, {
+const generateToken = (id, sessionVersion) => {
+  return jwt.sign({ id, sessionVersion }, process.env.JWT_SECRET, {
     expiresIn: '30d',
   });
 };
@@ -15,13 +15,13 @@ exports.registerUser = async (req, res) => {
     const userExists = await User.findOne({ email });
     if (userExists) return res.status(400).json({ message: 'User already exists' });
 
-    const user = await User.create({ name, email, password, role, department });
+    const user = await User.create({ name, email, password, role, department, sessionVersion: 1 });
     res.status(201).json({
       _id: user._id,
       name: user.name,
       email: user.email,
       role: user.role,
-      token: generateToken(user._id),
+      token: generateToken(user._id, user.sessionVersion),
     });
   } catch (error) {
     res.status(500).json({ message: error.message });
@@ -42,12 +42,22 @@ exports.loginUser = async (req, res) => {
         });
       }
 
+      const updatedUser = await User.findByIdAndUpdate(
+        user._id,
+        { $inc: { sessionVersion: 1 } },
+        { new: true }
+      );
+
+      if (!updatedUser) {
+        return res.status(404).json({ message: 'User not found' });
+      }
+
       res.json({
-        _id: user._id,
-        name: user.name,
-        email: user.email,
-        role: user.role,
-        token: generateToken(user._id),
+        _id: updatedUser._id,
+        name: updatedUser.name,
+        email: updatedUser.email,
+        role: updatedUser.role,
+        token: generateToken(updatedUser._id, Number(updatedUser.sessionVersion || 0)),
       });
     } else {
       res.status(401).json({ message: 'Invalid email or password' });

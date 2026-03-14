@@ -30,6 +30,14 @@ const protect = async (req, res, next) => {
         return res.status(401).json({ message: 'User not found' });
       }
 
+      const tokenSessionVersion = Number(decoded?.sessionVersion);
+      const activeSessionVersion = Number(req.user?.sessionVersion || 0);
+      if (!Number.isFinite(tokenSessionVersion) || tokenSessionVersion !== activeSessionVersion) {
+        return res.status(401).json({
+          message: 'Session expired. This account was signed in from another device.',
+        });
+      }
+
       const isAdmin = req.user.role === 'admin';
       if (!isAdmin && !isMaintenanceExemptRequest(req)) {
         const setting = await SystemSetting.findOne({ key: GLOBAL_KEY })

@@ -9,12 +9,16 @@ import api, {
 
 export const AUTH_STATE_EVENT = 'dtep-auth-state-changed';
 const COLD_START_LOGIN_MESSAGE =
-  'Backend is starting (Render cold start) or too slow to respond. Wait 20-40 seconds and try login again.';
-const LOGIN_AUTO_RETRY_MAX = 4;
-const LOGIN_AUTO_RETRY_DELAY_MS = 1500;
-const LOGIN_WARMUP_WAIT_CAP_MS = 8000;
+  'Backend is waking up on Render. Keep this page open while login continues automatically.';
+const LOGIN_AUTO_RETRY_WINDOW_MS = 65000;
+const LOGIN_AUTO_RETRY_DELAY_BASE_MS = 2000;
+const LOGIN_AUTO_RETRY_DELAY_MAX_MS = 8000;
+const LOGIN_WARMUP_WAIT_CAP_MS = 12000;
+const SESSION_VALIDATION_INTERVAL_MS = 15000;
 
 const wait = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
+const getLoginRetryDelay = (attempt: number) =>
+  Math.min(LOGIN_AUTO_RETRY_DELAY_BASE_MS * attempt, LOGIN_AUTO_RETRY_DELAY_MAX_MS);
 
 interface AuthContextType {
   user: User | null;
@@ -121,6 +125,33 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     };
   }, []);
 
+  useEffect(() => {
+    if (!user) return;
+
+    let isMounted = true;
+    const validateActiveSession = async () => {
+      try {
+        await api.get('/system/maintenance', {
+          [SKIP_RETRY_KEY]: true,
+        });
+      } catch (error: any) {
+        if (!isMounted) return;
+        if (Number(error?.response?.status || 0) === 401) {
+          setUser(null);
+          localStorage.removeItem('dtep_user');
+          emitAuthStateChanged();
+        }
+      }
+    };
+
+    const sessionTimer = window.setInterval(validateActiveSession, SESSION_VALIDATION_INTERVAL_MS);
+
+    return () => {
+      isMounted = false;
+      window.clearInterval(sessionTimer);
+    };
+  }, [user]);
+
   const login = useCallback(async (email: string, password: string, expectedRole: UserRole) => {
     await Promise.race([
       warmupBackendConnection(),
@@ -130,8 +161,10 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     });
 
     let lastErrorMessage = 'Login failed.';
+    const startedAt = Date.now();
+    let attempt = 1;
 
-    for (let attempt = 1; attempt <= LOGIN_AUTO_RETRY_MAX; attempt += 1) {
+    while (Date.now() - startedAt <= LOGIN_AUTO_RETRY_WINDOW_MS) {
       try {
         const response = await api.post(
           '/auth/login',
@@ -159,8 +192,20 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         const classified = classifyLoginError(error);
         lastErrorMessage = classified.message;
 
-        if (classified.retryable && attempt < LOGIN_AUTO_RETRY_MAX) {
-          await wait(LOGIN_AUTO_RETRY_DELAY_MS * attempt);
+        if (classified.retryable) {
+          const elapsedMs = Date.now() - startedAt;
+          const remainingMs = LOGIN_AUTO_RETRY_WINDOW_MS - elapsedMs;
+          const retryDelayMs = Math.min(getLoginRetryDelay(attempt), remainingMs);
+
+          if (retryDelayMs <= 0) break;
+
+          await Promise.all([
+            wait(retryDelayMs),
+            warmupBackendConnection().catch(() => {
+              // Retry loop will continue and surface final error if backend never wakes.
+            }),
+          ]);
+          attempt += 1;
           continue;
         }
 
