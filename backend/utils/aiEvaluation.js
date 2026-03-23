@@ -12,9 +12,17 @@ const countWords = (value) => {
   return matches ? matches.length : 0;
 };
 
-const buildHeadingRegex = (headings) => (
-  new RegExp(`^\\s*(?:${headings.map(escapeRegExp).join('|')})\\s*:?\\s*$`, 'im')
-);
+const buildHeadingRegex = (headings) => {
+  const options = headings.map(escapeRegExp).join('|');
+  const optionalPrefix = '(?:\\d+\\s*[\\).:-]\\s*)?';
+  const optionalScore = '(?:\\s*\\((?:\\d+\\s*(?:marks?)?|part\\s*\\d+)\\))?';
+  const optionalPart = '(?:\\s*[-–—]\\s*part\\s*\\d+)?';
+
+  return new RegExp(
+    `^\\s*${optionalPrefix}(?:${options})\\b${optionalScore}${optionalPart}\\s*:?\\s*$`,
+    'im'
+  );
+};
 
 const BASE_SECTION_DEFINITIONS = [
   { key: 'topic', label: 'Topic', maxMarks: 10, headings: ['topic', 'title', 'subject'] },
