@@ -620,6 +620,8 @@ const Layout: React.FC = () => {
                   <div className="mt-3 pt-3 border-t border-white/10">
                     <p className="text-[9px] font-black uppercase tracking-widest text-adaptive-sub">Role</p>
                     <p className="text-[11px] font-bold text-adaptive-main mt-1">{roleLabel}</p>
+                    <p className="text-[9px] font-black uppercase tracking-widest text-adaptive-sub mt-3">Department</p>
+                    <p className="text-[11px] font-bold text-adaptive-main mt-1">{user?.department || 'Not set'}</p>
                   </div>
                 </div>
               )}

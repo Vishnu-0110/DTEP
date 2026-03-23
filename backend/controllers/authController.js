@@ -31,6 +31,7 @@ exports.registerUser = async (req, res) => {
       name: user.name,
       email: user.email,
       role: user.role,
+      department: user.department || '',
       profilePhoto: user.profilePhoto || '',
       token: generateToken(user._id, user.sessionVersion),
     });
@@ -68,6 +69,7 @@ exports.loginUser = async (req, res) => {
         name: updatedUser.name,
         email: updatedUser.email,
         role: updatedUser.role,
+        department: updatedUser.department || '',
         profilePhoto: updatedUser.profilePhoto || '',
         token: generateToken(updatedUser._id, Number(updatedUser.sessionVersion || 0)),
       });

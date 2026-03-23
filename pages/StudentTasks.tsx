@@ -6,7 +6,10 @@ import {
   CheckCircle2, 
   AlertCircle,
   Loader2,
-  FileText
+  FileText,
+  ListChecks,
+  NotebookPen,
+  AlignLeft
 } from 'lucide-react';
 import api from '../services/api';
 import { getScoreTone } from '../utils/scoreTone';
@@ -45,6 +48,14 @@ const getDisplayStatus = (task: any, nowMs: number): 'assigned' | 'pending' | 'e
   const deadlineMs = new Date(task.deadline).getTime();
   if (Number.isFinite(deadlineMs) && nowMs > deadlineMs) return 'overdue';
   return 'assigned';
+};
+
+const hasTaskGuidance = (task: any) => {
+  return [
+    task?.description,
+    task?.rubric,
+    task?.studentInstructions,
+  ].some((item) => String(item || '').trim().length > 0);
 };
 
 const StudentTasks: React.FC = () => {
@@ -277,6 +288,44 @@ const StudentTasks: React.FC = () => {
                  By {task.teacher || 'Evaluator'}
               </p>
 
+              {hasTaskGuidance(task) && (
+                <div className="space-y-3 mb-6">
+                  {task.description && (
+                    <div className="bg-adaptive-nested p-3 rounded-2xl border border-white/5">
+                      <p className="text-[8px] font-black uppercase tracking-widest text-adaptive-sub mb-1.5 flex items-center gap-1.5">
+                        <AlignLeft size={11} className="theme-text-primary" />
+                        Assignment Brief
+                      </p>
+                      <p className="text-[11px] leading-relaxed text-adaptive-main font-medium whitespace-pre-line break-words line-clamp-3">
+                        {task.description}
+                      </p>
+                    </div>
+                  )}
+                  {task.rubric && (
+                    <div className="bg-adaptive-nested p-3 rounded-2xl border border-white/5">
+                      <p className="text-[8px] font-black uppercase tracking-widest text-adaptive-sub mb-1.5 flex items-center gap-1.5">
+                        <ListChecks size={11} className="theme-text-primary" />
+                        Evaluation Rubric
+                      </p>
+                      <p className="text-[11px] leading-relaxed text-adaptive-main font-medium whitespace-pre-line break-words line-clamp-3">
+                        {task.rubric}
+                      </p>
+                    </div>
+                  )}
+                  {task.studentInstructions && (
+                    <div className="bg-adaptive-nested p-3 rounded-2xl border border-white/5">
+                      <p className="text-[8px] font-black uppercase tracking-widest text-adaptive-sub mb-1.5 flex items-center gap-1.5">
+                        <NotebookPen size={11} className="theme-text-primary" />
+                        Student Instructions
+                      </p>
+                      <p className="text-[11px] leading-relaxed text-adaptive-main font-medium whitespace-pre-line break-words line-clamp-3">
+                        {task.studentInstructions}
+                      </p>
+                    </div>
+                  )}
+                </div>
+              )}
+
               <div className="mt-auto space-y-6">
                 <div className="bg-adaptive-nested p-3 rounded-2xl border border-white/5 space-y-2">
                   <div className="flex items-start justify-between gap-3 text-[10px] font-black uppercase tracking-widest">
@@ -363,6 +412,44 @@ const StudentTasks: React.FC = () => {
           </div>
 
           <div className="space-y-6">
+            {selectedTask && hasTaskGuidance(selectedTask) && (
+              <div className="bg-adaptive-nested/50 border border-white/10 rounded-3xl p-5 space-y-4">
+                {selectedTask.description && (
+                  <div>
+                    <p className="text-[9px] font-black text-adaptive-sub uppercase tracking-widest mb-1.5 flex items-center gap-2">
+                      <AlignLeft size={12} className="theme-text-primary" />
+                      Assignment Brief
+                    </p>
+                    <p className="text-sm text-adaptive-main leading-relaxed whitespace-pre-line break-words">
+                      {selectedTask.description}
+                    </p>
+                  </div>
+                )}
+                {selectedTask.rubric && (
+                  <div>
+                    <p className="text-[9px] font-black text-adaptive-sub uppercase tracking-widest mb-1.5 flex items-center gap-2">
+                      <ListChecks size={12} className="theme-text-primary" />
+                      Evaluation Rubric
+                    </p>
+                    <p className="text-sm text-adaptive-main leading-relaxed whitespace-pre-line break-words">
+                      {selectedTask.rubric}
+                    </p>
+                  </div>
+                )}
+                {selectedTask.studentInstructions && (
+                  <div>
+                    <p className="text-[9px] font-black text-adaptive-sub uppercase tracking-widest mb-1.5 flex items-center gap-2">
+                      <NotebookPen size={12} className="theme-text-primary" />
+                      Student Instructions
+                    </p>
+                    <p className="text-sm text-adaptive-main leading-relaxed whitespace-pre-line break-words">
+                      {selectedTask.studentInstructions}
+                    </p>
+                  </div>
+                )}
+              </div>
+            )}
+
             <div className={`border-2 border-dashed rounded-3xl p-6 sm:p-12 text-center transition-all group cursor-pointer ${selectedFile ? 'theme-border-primary bg-adaptive-nested' : 'border-white/10 hover:theme-border-primary hover:bg-black/5 dark:hover:bg-white/5'}`}>
               <input 
                 type="file" 

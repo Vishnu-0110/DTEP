@@ -1,11 +1,13 @@
 
 import React, { useEffect, useState } from 'react';
-import { X, Calendar, Edit3, Type } from 'lucide-react';
+import { X, Calendar, Edit3, Type, ListChecks, NotebookPen } from 'lucide-react';
 import ModalShell from './ModalShell';
 
 const INITIAL_FORM_DATA = {
   title: '',
   description: '',
+  rubric: '',
+  studentInstructions: '',
   deadline: '',
 };
 
@@ -74,15 +76,43 @@ const TaskModal: React.FC<TaskModalProps> = ({ isOpen, onClose, onSubmit }) => {
             <div className="space-y-1.5">
               <div className="flex items-center gap-2 ml-1 mb-1">
                  <Edit3 size={12} className="theme-text-primary" />
-                 <label className="text-[10px] font-black text-adaptive-sub uppercase tracking-widest">Description & Instructions</label>
+                 <label className="text-[10px] font-black text-adaptive-sub uppercase tracking-widest">Assignment Brief</label>
               </div>
               <textarea 
                 rows={3}
                 required
-                placeholder="Define assignment criteria, format, and expectations..."
+                placeholder="Summarize the assignment topic and expected outcome..."
                 className="w-full surface-input rounded-xl py-3 px-3.5 transition-all font-medium resize-none leading-relaxed text-sm custom-scrollbar"
                 value={formData.description}
                 onChange={e => setFormData({...formData, description: e.target.value})}
+              ></textarea>
+            </div>
+
+            <div className="space-y-1.5">
+              <div className="flex items-center gap-2 ml-1 mb-1">
+                 <ListChecks size={12} className="theme-text-primary" />
+                 <label className="text-[10px] font-black text-adaptive-sub uppercase tracking-widest">Evaluation Rubric</label>
+              </div>
+              <textarea 
+                rows={3}
+                placeholder="Example: Concept clarity 40%, examples 30%, references 30%..."
+                className="w-full surface-input rounded-xl py-3 px-3.5 transition-all font-medium resize-none leading-relaxed text-sm custom-scrollbar"
+                value={formData.rubric}
+                onChange={e => setFormData({...formData, rubric: e.target.value})}
+              ></textarea>
+            </div>
+
+            <div className="space-y-1.5">
+              <div className="flex items-center gap-2 ml-1 mb-1">
+                 <NotebookPen size={12} className="theme-text-primary" />
+                 <label className="text-[10px] font-black text-adaptive-sub uppercase tracking-widest">Student Instructions</label>
+              </div>
+              <textarea 
+                rows={3}
+                placeholder="Example: Minimum pages, format, naming convention, submission notes..."
+                className="w-full surface-input rounded-xl py-3 px-3.5 transition-all font-medium resize-none leading-relaxed text-sm custom-scrollbar"
+                value={formData.studentInstructions}
+                onChange={e => setFormData({...formData, studentInstructions: e.target.value})}
               ></textarea>
             </div>
 

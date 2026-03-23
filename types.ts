@@ -9,6 +9,7 @@ export interface User {
   name: string;
   email: string;
   role: UserRole;
+  department?: string;
   profilePhoto?: string;
 }
 
@@ -16,6 +17,8 @@ export interface Task {
   id: string;
   title: string;
   description: string;
+  rubric?: string;
+  studentInstructions?: string;
   deadline: string;
   createdBy: string;
   createdAt: string;

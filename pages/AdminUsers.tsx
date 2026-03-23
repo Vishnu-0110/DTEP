@@ -22,6 +22,8 @@ const getRequestErrorMessage = (error: any, fallback: string) => {
   return error.response?.data?.message || fallback;
 };
 
+const DEPARTMENT_OPTIONS = ['CSE', 'IT', 'AIDS', 'ISE', 'AGRI', 'AIML', 'CT', 'CSD', 'BT', 'FT'];
+
 const AdminUsers: React.FC = () => {
   const { user: currentUser, isDemoMode } = useAuth();
   const [users, setUsers] = useState<any[]>([]);
@@ -471,12 +473,18 @@ const AdminUsers: React.FC = () => {
               </div>
               <div className="space-y-1">
                 <label className="text-[9px] font-black text-adaptive-sub uppercase tracking-widest ml-1">Department</label>
-                <input 
-                  type="text" 
+                <select
                   value={formData.department}
                   onChange={e => setFormData({...formData, department: e.target.value})}
-                  className="w-full surface-input rounded-xl py-3 px-4 transition-all font-medium text-sm" 
-                />
+                  className="w-full surface-input rounded-xl py-3 px-4 transition-all font-bold text-[10px] uppercase"
+                >
+                  <option value="">Select Department</option>
+                  {DEPARTMENT_OPTIONS.map((dept) => (
+                    <option key={dept} value={dept}>
+                      {dept}
+                    </option>
+                  ))}
+                </select>
               </div>
             </div>
 

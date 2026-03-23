@@ -35,6 +35,7 @@ const readStoredUser = (): StoredUser | null => {
     const name = String(parsed?.name || '').trim();
     const email = String(parsed?.email || '').trim();
     const role = String(parsed?.role || '').trim().toLowerCase() as UserRole;
+    const department = String(parsed?.department || '').trim();
     const token = String(parsed?.token || '').trim();
     const profilePhoto = String(parsed?.profilePhoto || '').trim();
 
@@ -43,7 +44,7 @@ const readStoredUser = (): StoredUser | null => {
       return null;
     }
 
-    return { id, name, email, role, token, profilePhoto };
+    return { id, name, email, role, department, token, profilePhoto };
   } catch (_) {
     localStorage.removeItem('dtep_user');
     return null;
@@ -202,13 +203,14 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
             [SKIP_RETRY_KEY]: true,
           }
         );
-        const { _id, name, role, token, profilePhoto } = response.data;
+        const { _id, name, role, department, token, profilePhoto } = response.data;
         
         const userData: User & { token: string } = {
           id: _id,
           name,
           email,
           role: role as UserRole,
+          department: String(department || '').trim(),
           token,
           profilePhoto: String(profilePhoto || '').trim(),
         };
