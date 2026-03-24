@@ -149,8 +149,36 @@ const dedupeList = (items = []) => (
   Array.from(new Set(items.map((item) => String(item || '').trim()).filter(Boolean)))
 );
 
+const normalizeMissingPoint = (value) => (
+  String(value || '')
+    .replace(/^missing points?\s*:\s*/i, '')
+    .replace(/^[-*•]+\s*/, '')
+    .trim()
+);
+const toMissingPointList = (value) => (
+  String(value || '')
+    .split(/[;\n\r]+/)
+    .map(normalizeMissingPoint)
+    .filter(Boolean)
+);
+const dedupeMissingPointList = (items = []) => {
+  const seen = new Set();
+  const output = [];
+
+  for (const item of items) {
+    for (const clause of toMissingPointList(item)) {
+      const key = clause.toLowerCase();
+      if (seen.has(key)) continue;
+      seen.add(key);
+      output.push(clause);
+    }
+  }
+
+  return output;
+};
+
 const joinSentences = (items = []) => dedupeList(items).join(' ');
-const joinClauses = (items = []) => dedupeList(items).join('; ');
+const joinClauses = (items = []) => dedupeMissingPointList(items).join('; ');
 
 const consumeLineBreaks = (text, startIndex) => {
   let cursor = startIndex;

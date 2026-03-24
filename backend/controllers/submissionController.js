@@ -64,16 +64,49 @@ const buildEvaluationDetails = (baseDetails, patch = {}) => {
   return next;
 };
 
+const normalizeMissingPoint = (value = '') => (
+  String(value || '')
+    .replace(/^missing points?\s*:\s*/i, '')
+    .replace(/^[-*•]+\s*/, '')
+    .trim()
+);
+const splitMissingPoints = (value = '') => (
+  String(value || '')
+    .split(/[;\n\r]+/)
+    .map(normalizeMissingPoint)
+    .filter(Boolean)
+);
+const dedupeMissingPoints = (items = []) => {
+  const seen = new Set();
+  const output = [];
+
+  for (const item of items) {
+    for (const point of splitMissingPoints(item)) {
+      const key = point.toLowerCase();
+      if (seen.has(key)) continue;
+      seen.add(key);
+      output.push(point);
+    }
+  }
+
+  return output;
+};
+
 const appendMissingPoints = (feedbackText = '', missingPoints = '') => {
   const cleanFeedback = String(feedbackText || '').trim();
-  const cleanMissing = String(missingPoints || '').trim();
+  const missingList = dedupeMissingPoints([missingPoints]);
 
-  if (!cleanMissing) return cleanFeedback;
-  if (cleanFeedback.toLowerCase().includes(cleanMissing.toLowerCase())) return cleanFeedback;
+  if (missingList.length === 0) return cleanFeedback;
+
+  const existingInFeedback = dedupeMissingPoints([cleanFeedback]).map((point) => point.toLowerCase());
+  const nextMissingList = missingList.filter((point) => !existingInFeedback.includes(point.toLowerCase()));
+
+  if (nextMissingList.length === 0) return cleanFeedback;
+  const formattedMissing = nextMissingList.join('; ');
 
   return cleanFeedback
-    ? `${cleanFeedback}\n\nMissing Points: ${cleanMissing}`
-    : `Missing Points: ${cleanMissing}`;
+    ? `${cleanFeedback}\n\nMissing Points: ${formattedMissing}`
+    : `Missing Points: ${formattedMissing}`;
 };
 
 const cleanupUploadedFile = (filePath) => {

@@ -39,16 +39,49 @@ const Submissions: React.FC = () => {
 
   const locationState = location.state as { activeSubmissionId?: string } | null;
 
+  const normalizeMissingPoint = (value = '') => (
+    String(value || '')
+      .replace(/^missing points?\s*:\s*/i, '')
+      .replace(/^[-*•]+\s*/, '')
+      .trim()
+  );
+  const splitMissingPoints = (value = '') => (
+    String(value || '')
+      .split(/[;\n\r]+/)
+      .map(normalizeMissingPoint)
+      .filter(Boolean)
+  );
+  const dedupeMissingPoints = (items: string[] = []) => {
+    const seen = new Set<string>();
+    const output: string[] = [];
+
+    for (const item of items) {
+      for (const point of splitMissingPoints(item)) {
+        const key = point.toLowerCase();
+        if (seen.has(key)) continue;
+        seen.add(key);
+        output.push(point);
+      }
+    }
+
+    return output;
+  };
+
   const appendMissingPoints = (feedbackText = '', missingPoints = '') => {
     const cleanFeedback = String(feedbackText || '').trim();
-    const cleanMissing = String(missingPoints || '').trim();
+    const missingList = dedupeMissingPoints([missingPoints]);
 
-    if (!cleanMissing) return cleanFeedback;
-    if (cleanFeedback.toLowerCase().includes(cleanMissing.toLowerCase())) return cleanFeedback;
+    if (missingList.length === 0) return cleanFeedback;
+
+    const existingInFeedback = dedupeMissingPoints([cleanFeedback]).map((point) => point.toLowerCase());
+    const nextMissingList = missingList.filter((point) => !existingInFeedback.includes(point.toLowerCase()));
+
+    if (nextMissingList.length === 0) return cleanFeedback;
+    const formattedMissing = nextMissingList.join('; ');
 
     return cleanFeedback
-      ? `${cleanFeedback}\n\nMissing Points: ${cleanMissing}`
-      : `Missing Points: ${cleanMissing}`;
+      ? `${cleanFeedback}\n\nMissing Points: ${formattedMissing}`
+      : `Missing Points: ${formattedMissing}`;
   };
 
   const applyMarksInput = (rawValue: string) => {
@@ -319,6 +352,20 @@ const Submissions: React.FC = () => {
   const isEvaluated = activeSubmission?.status === 'evaluated';
   const isMissedSubmission = Boolean(activeSubmission?.isAutoZero);
   const currentScoreTone = getScoreTone(marks);
+  const missingPointsList = dedupeMissingPoints([String(activeSubmission?.missingPoints || '')]);
+  const structureScore =
+    typeof activeSubmission?.evaluationDetails?.structureScore === 'number'
+      ? activeSubmission.evaluationDetails.structureScore
+      : null;
+  const rawAiScore =
+    typeof activeSubmission?.evaluationDetails?.aiRawMarks === 'number'
+      ? activeSubmission.evaluationDetails.aiRawMarks
+      : null;
+  const sectionIssues = Array.isArray(activeSubmission?.evaluationDetails?.sectionAnalysis)
+    ? activeSubmission.evaluationDetails.sectionAnalysis
+        .map((section: any) => String(section?.issue || '').trim())
+        .filter(Boolean)
+    : [];
 
   return (
     <div className="space-y-6 lg:space-y-10 animate-in fade-in duration-500 pb-10">
@@ -516,9 +563,36 @@ const Submissions: React.FC = () => {
                       Deadline missed. The system assigned 0 marks automatically because no submission was uploaded.
                     </div>
                   )}
-                  {activeSubmission?.missingPoints && (
+                  {missingPointsList.length > 0 && (
                     <div className="bg-amber-500/10 border border-amber-500/20 p-3 rounded-xl text-amber-400 text-[10px] font-bold">
-                      Missing Points: {activeSubmission.missingPoints}
+                      <p className="uppercase tracking-widest mb-2">Missing Points</p>
+                      <ul className="space-y-1 list-disc pl-4">
+                        {missingPointsList.map((point, idx) => (
+                          <li key={`${idx}-${point}`} className="text-[10px] font-bold text-amber-300 leading-relaxed">
+                            {point}
+                          </li>
+                        ))}
+                      </ul>
+                    </div>
+                  )}
+                  {(rawAiScore !== null || structureScore !== null || sectionIssues.length > 0) && (
+                    <div className="bg-blue-500/10 border border-blue-500/20 p-3 rounded-xl text-blue-200 text-[10px] font-bold space-y-2">
+                      <p className="uppercase tracking-widest">Rubric Breakdown</p>
+                      {rawAiScore !== null && (
+                        <p>Raw AI score: {rawAiScore}/100</p>
+                      )}
+                      {structureScore !== null && (
+                        <p>Structure score cap: {structureScore}/100</p>
+                      )}
+                      {sectionIssues.length > 0 && (
+                        <ul className="space-y-1 list-disc pl-4">
+                          {sectionIssues.map((issue: string, idx: number) => (
+                            <li key={`${idx}-${issue}`} className="leading-relaxed">
+                              {issue}
+                            </li>
+                          ))}
+                        </ul>
+                      )}
                     </div>
                   )}
                 </div>
