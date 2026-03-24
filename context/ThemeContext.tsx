@@ -5,34 +5,13 @@ import { AUTH_STATE_EVENT } from './AuthContext';
 export type ThemeType = 'midnight' | 'emerald' | 'cyberpunk' | 'sunset' | 'slate';
 export type ColorMode = 'light' | 'dark';
 
-const LOGIN_THEME: ThemeType = 'slate';
-const LOGIN_MODE: ColorMode = 'light';
 const DEFAULT_THEME: ThemeType = 'midnight';
+const DEFAULT_MODE: ColorMode = 'dark';
 const THEME_KEY = 'dtep_theme';
 const MODE_KEY = 'dtep_mode';
 const USER_THEME_PREFIX = 'dtep_theme_user';
 const USER_MODE_PREFIX = 'dtep_mode_user';
 
-const hasStoredUserSession = () => {
-  if (typeof window === 'undefined') return false;
-
-  try {
-    const raw = localStorage.getItem('dtep_user');
-    if (!raw) return false;
-    const parsed = JSON.parse(raw);
-    const hasId = String(parsed?.id || '').trim().length > 0;
-    const hasToken = String(parsed?.token || '').trim().length > 0;
-    return hasId && hasToken;
-  } catch (_) {
-    return false;
-  }
-};
-
-const getCurrentHash = () => {
-  if (typeof window === 'undefined') return '';
-  if (window.location.hash) return window.location.hash;
-  return hasStoredUserSession() ? '#/' : '#/login';
-};
 const isThemeType = (value: string): value is ThemeType =>
   value === 'midnight' || value === 'emerald' || value === 'cyberpunk' || value === 'sunset' || value === 'slate';
 const isColorMode = (value: string): value is ColorMode => value === 'light' || value === 'dark';
@@ -65,7 +44,7 @@ const readStoredTheme = () => {
 };
 
 const readStoredMode = () => {
-  if (typeof window === 'undefined') return 'dark' as ColorMode;
+  if (typeof window === 'undefined') return DEFAULT_MODE;
 
   const userKey = getActiveUserPreferenceKey();
   const storedForUser = String(localStorage.getItem(getModeStorageKey(userKey)) || '').trim();
@@ -74,7 +53,7 @@ const readStoredMode = () => {
   const legacy = String(localStorage.getItem(MODE_KEY) || '').trim();
   if (isColorMode(legacy)) return legacy;
 
-  return window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
+  return DEFAULT_MODE;
 };
 
 const persistThemeForActiveUser = (newTheme: ThemeType) => {
@@ -103,7 +82,6 @@ const ThemeContext = createContext<ThemeContextType | undefined>(undefined);
 export const ThemeProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const [theme, setThemeState] = useState<ThemeType>(() => readStoredTheme());
   const [mode, setModeState] = useState<ColorMode>(() => readStoredMode());
-  const [routeHash, setRouteHash] = useState(getCurrentHash);
 
   const setTheme = (newTheme: ThemeType) => {
     setThemeState(newTheme);
@@ -119,36 +97,37 @@ export const ThemeProvider: React.FC<{ children: React.ReactNode }> = ({ childre
   useEffect(() => {
     if (typeof window === 'undefined') return undefined;
 
-    const syncHash = () => setRouteHash(getCurrentHash());
     const syncPreferences = () => {
       setThemeState(readStoredTheme());
       setModeState(readStoredMode());
     };
-    window.addEventListener('hashchange', syncHash);
+    const syncFromStorage = (event: StorageEvent) => {
+      if (!event.key || event.key.startsWith(USER_THEME_PREFIX) || event.key.startsWith(USER_MODE_PREFIX) || event.key === THEME_KEY || event.key === MODE_KEY || event.key === 'dtep_user') {
+        syncPreferences();
+      }
+    };
+
     window.addEventListener(AUTH_STATE_EVENT, syncPreferences);
-    syncHash();
+    window.addEventListener('storage', syncFromStorage);
+    syncPreferences();
 
     return () => {
-      window.removeEventListener('hashchange', syncHash);
       window.removeEventListener(AUTH_STATE_EVENT, syncPreferences);
+      window.removeEventListener('storage', syncFromStorage);
     };
   }, []);
 
   useEffect(() => {
-    const isLoginRoute = routeHash.startsWith('#/login');
-    const appliedTheme = isLoginRoute ? LOGIN_THEME : theme;
-    const appliedMode = isLoginRoute ? LOGIN_MODE : mode;
-
-    document.documentElement.setAttribute('data-theme', appliedTheme);
-    document.documentElement.setAttribute('data-mode', appliedMode);
+    document.documentElement.setAttribute('data-theme', theme);
+    document.documentElement.setAttribute('data-mode', mode);
     // Force a minor repaint/class update for tailwind if needed, 
     // though data-mode in CSS variables is more elegant.
-    if (appliedMode === 'dark') {
+    if (mode === 'dark') {
       document.documentElement.classList.add('dark');
     } else {
       document.documentElement.classList.remove('dark');
     }
-  }, [mode, routeHash, theme]);
+  }, [mode, theme]);
 
   return (
     <ThemeContext.Provider value={{ theme, mode, setTheme, toggleMode }}>

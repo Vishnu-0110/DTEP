@@ -20,9 +20,8 @@
     </script>
     <script>
       (() => {
-        const LOGIN_THEME = 'slate';
-        const LOGIN_MODE = 'light';
         const DEFAULT_THEME = 'midnight';
+        const DEFAULT_MODE = 'dark';
 
         const isThemeType = (value) =>
           value === 'midnight' ||
@@ -53,33 +52,18 @@
           return String(user.id || user.email || '').trim() || 'guest';
         };
 
-        const routeHash = window.location.hash || '';
-        const isLoginRoute = routeHash.startsWith('#/login');
-        const hasSession = Boolean(getStoredUser());
-        const useLoginInterface = isLoginRoute || !hasSession;
+        const userKey = getUserKey();
+        const userTheme = String(localStorage.getItem(`dtep_theme_user:${userKey}`) || '').trim();
+        const userMode = String(localStorage.getItem(`dtep_mode_user:${userKey}`) || '').trim();
+        const legacyTheme = String(localStorage.getItem('dtep_theme') || '').trim();
+        const legacyMode = String(localStorage.getItem('dtep_mode') || '').trim();
 
-        let theme = LOGIN_THEME;
-        let mode = LOGIN_MODE;
-
-        if (!useLoginInterface) {
-          const userKey = getUserKey();
-          const userTheme = String(localStorage.getItem(`dtep_theme_user:${userKey}`) || '').trim();
-          const userMode = String(localStorage.getItem(`dtep_mode_user:${userKey}`) || '').trim();
-          const legacyTheme = String(localStorage.getItem('dtep_theme') || '').trim();
-          const legacyMode = String(localStorage.getItem('dtep_mode') || '').trim();
-
-          theme = isThemeType(userTheme)
-            ? userTheme
-            : (isThemeType(legacyTheme) ? legacyTheme : DEFAULT_THEME);
-
-          if (isColorMode(userMode)) {
-            mode = userMode;
-          } else if (isColorMode(legacyMode)) {
-            mode = legacyMode;
-          } else {
-            mode = window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
-          }
-        }
+        const theme = isThemeType(userTheme)
+          ? userTheme
+          : (isThemeType(legacyTheme) ? legacyTheme : DEFAULT_THEME);
+        const mode = isColorMode(userMode)
+          ? userMode
+          : (isColorMode(legacyMode) ? legacyMode : DEFAULT_MODE);
 
         document.documentElement.setAttribute('data-theme', theme);
         document.documentElement.setAttribute('data-mode', mode);
