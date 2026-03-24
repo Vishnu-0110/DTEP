@@ -12,16 +12,6 @@ const taskSchema = new mongoose.Schema(
       required: true,
       trim: true,
     },
-    rubric: {
-      type: String,
-      default: '',
-      trim: true,
-    },
-    studentInstructions: {
-      type: String,
-      default: '',
-      trim: true,
-    },
     deadline: {
       type: Date,
       required: true,

@@ -7,8 +7,6 @@ exports.createTask = async (req, res) => {
   const normalizeText = (value, max = 6000) => String(value || '').trim().slice(0, max);
   const title = normalizeText(req.body?.title, 180);
   const description = normalizeText(req.body?.description, 6000);
-  const rubric = normalizeText(req.body?.rubric, 8000);
-  const studentInstructions = normalizeText(req.body?.studentInstructions, 8000);
   const rawDeadline = String(req.body?.deadline || '').trim();
   const deadline = new Date(rawDeadline);
 
@@ -21,8 +19,6 @@ exports.createTask = async (req, res) => {
       title,
       description,
       deadline,
-      rubric,
-      studentInstructions,
       createdBy: req.user._id,
     });
     res.status(201).json(task);

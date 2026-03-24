@@ -4,7 +4,6 @@ require('dotenv').config();
 const PREFERRED_MODEL = 'gemini-1.5-flash';
 const MODEL_SEQUENCE = [PREFERRED_MODEL, 'gemini-2.0-flash', 'gemini-2.5-flash'];
 const SECTION_WORD_MIN = 250;
-const SECTION_WORD_MAX = 300;
 
 const escapeRegExp = (value) => String(value || '').replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
 const countWords = (value) => {
@@ -42,15 +41,10 @@ const BASE_SECTION_DEFINITIONS = [
   { key: 'examples', label: 'Examples', maxMarks: 10, headings: ['examples', 'example'] },
   { key: 'applications', label: 'Applications', maxMarks: 10, headings: ['applications', 'application'] },
   {
-    key: 'advantages',
-    label: 'Advantages and Disadvantages',
+    key: 'images',
+    label: 'Images',
     maxMarks: 10,
-    headings: [
-      'advantages and disadvantages',
-      'advantages / disadvantages',
-      'advantages & disadvantages',
-      'pros and cons',
-    ],
+    headings: ['images', 'image', 'figures', 'visuals'],
   },
   { key: 'conclusion', label: 'Conclusion', maxMarks: 10, headings: ['conclusion'] },
   { key: 'references', label: 'References', maxMarks: 10, headings: ['references', 'bibliography'] },
@@ -72,19 +66,19 @@ const SECTION_GUIDANCE = [
   'Give the highest weight to accurate explanation of concepts.',
   'Reward concrete examples that support the explanation.',
   'Reward practical applications or real-world use cases.',
-  'Reward balanced coverage of advantages and disadvantages.',
+  'Reward relevant and meaningful images/figures with clear context.',
   'Reward a clear conclusion that closes the answer.',
   'Reward references only if they are relevant and meaningful.',
 ];
 
 const STRICT_FORMAT_RULES = [
   `The submission must explicitly include these section headings or clearly equivalent headings: ${SECTION_DEFINITIONS.map((section) => section.label).join(', ')}.`,
-  `Each required section must contain ${SECTION_WORD_MIN} to ${SECTION_WORD_MAX} words.`,
+  `Each required section must contain at least ${SECTION_WORD_MIN} words for full marks.`,
   'If a required section is missing, give that section 0 marks.',
-  `If a section is present but below ${SECTION_WORD_MIN} words or above ${SECTION_WORD_MAX} words, apply a strict penalty even if the content is good.`,
-  `Award full marks for a section only if the heading is present, the section length is within ${SECTION_WORD_MIN}-${SECTION_WORD_MAX} words, and the content quality is strong.`,
-  'Do not be lenient about word count or missing rubric sections.',
-  'Mention missing sections and word-count violations clearly in feedback and missingPoints.',
+  `If a section is present but below ${SECTION_WORD_MIN} words, apply a strict proportional penalty.`,
+  `Award full marks for a section only if the heading is present, word count is at least ${SECTION_WORD_MIN}, and quality is strong.`,
+  'Do not be lenient about missing rubric sections or short sections.',
+  'Mention missing sections and below-minimum sections clearly in feedback and missingPoints.',
 ];
 
 const parseJsonFromText = (text) => {
@@ -224,11 +218,8 @@ const findSections = (text) => {
 
 const getWordCountRatio = (wordCount) => {
   if (!Number.isFinite(wordCount) || wordCount <= 0) return 0;
-  if (wordCount >= SECTION_WORD_MIN && wordCount <= SECTION_WORD_MAX) return 1;
-
-  const distance = wordCount < SECTION_WORD_MIN
-    ? SECTION_WORD_MIN - wordCount
-    : wordCount - SECTION_WORD_MAX;
+  if (wordCount >= SECTION_WORD_MIN) return 1;
+  const distance = SECTION_WORD_MIN - wordCount;
 
   if (distance <= 20) return 0.75;
   if (distance <= 50) return 0.5;
@@ -243,7 +234,7 @@ const buildStructureAnalysis = (answer) => {
   const sections = SECTION_DEFINITIONS.map((definition) => {
     const found = foundByKey.get(definition.key) || null;
     const wordCount = found?.wordCount || 0;
-    const withinTarget = found ? wordCount >= SECTION_WORD_MIN && wordCount <= SECTION_WORD_MAX : false;
+    const withinTarget = found ? wordCount >= SECTION_WORD_MIN : false;
     const ratio = found ? getWordCountRatio(wordCount) : 0;
     const earnedMarks = Math.round(definition.maxMarks * ratio);
 
@@ -252,8 +243,6 @@ const buildStructureAnalysis = (answer) => {
       issue = `${definition.label} section is missing`;
     } else if (wordCount < SECTION_WORD_MIN) {
       issue = `${definition.label} has ${wordCount} words and is below ${SECTION_WORD_MIN}`;
-    } else if (wordCount > SECTION_WORD_MAX) {
-      issue = `${definition.label} has ${wordCount} words and exceeds ${SECTION_WORD_MAX}`;
     }
 
     return {
@@ -273,7 +262,7 @@ const buildStructureAnalysis = (answer) => {
     structureScore: sections.reduce((total, section) => total + section.earnedMarks, 0),
     sections,
     missingSections: sections.filter((section) => !section.headingFound).map((section) => section.label),
-    outOfRangeSections: sections
+    belowMinimumSections: sections
       .filter((section) => section.headingFound && !section.withinTarget)
       .map((section) => `${section.label} (${section.wordCount} words)`),
     violations: sections.map((section) => section.issue).filter(Boolean),
@@ -326,7 +315,7 @@ ${SECTION_GUIDANCE.map((line) => `- ${line}`).join('\n')}
 Strict rubric rules:
 ${STRICT_FORMAT_RULES.map((line) => `- ${line}`).join('\n')}
 
-Score on a 0-100 scale. Be strict: if a section is missing or outside the ${SECTION_WORD_MIN}-${SECTION_WORD_MAX} word range, do not award full marks for that section.
+Score on a 0-100 scale. Be strict: if a section is missing or below ${SECTION_WORD_MIN} words, do not award full marks for that section.
 
 Return ONLY valid JSON with this shape:
 {
@@ -375,7 +364,7 @@ const mergeAutomaticResult = (aiResult, structureAnalysis) => {
       ? `Structure compliance capped the score at ${structureAnalysis.structureScore}/100.`
       : '',
     violations.length === 0
-      ? `All required rubric sections were present and within the ${SECTION_WORD_MIN}-${SECTION_WORD_MAX} word limit.`
+      ? `All required rubric sections were present with at least ${SECTION_WORD_MIN} words.`
       : '',
   ]);
 
@@ -400,19 +389,19 @@ const mergeDetailedResult = (aiResult, structureAnalysis) => {
   const strengths = dedupeList([
     ...aiResult.strengths,
     violations.length === 0
-      ? `All required rubric sections were present and stayed within ${SECTION_WORD_MIN}-${SECTION_WORD_MAX} words.`
+      ? `All required rubric sections were present with at least ${SECTION_WORD_MIN} words.`
       : '',
   ]);
 
   const weaknesses = dedupeList([
     ...aiResult.weaknesses,
     ...structureAnalysis.missingSections.map((section) => `${section} section is missing.`),
-    ...structureAnalysis.outOfRangeSections.map((section) => `${section} is outside the required word range.`),
+    ...structureAnalysis.belowMinimumSections.map((section) => `${section} is below the minimum word requirement.`),
   ]);
 
   const improvements = dedupeList([
     ...aiResult.improvements,
-    `Use explicit headings for all rubric sections and keep each one within ${SECTION_WORD_MIN}-${SECTION_WORD_MAX} words.`,
+    `Use explicit headings for all rubric sections and keep each section at or above ${SECTION_WORD_MIN} words.`,
   ]);
 
   const summary = joinSentences([

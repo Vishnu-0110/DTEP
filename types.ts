@@ -17,8 +17,6 @@ export interface Task {
   id: string;
   title: string;
   description: string;
-  rubric?: string;
-  studentInstructions?: string;
   deadline: string;
   createdBy: string;
   createdAt: string;

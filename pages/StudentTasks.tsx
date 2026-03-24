@@ -6,10 +6,7 @@ import {
   CheckCircle2, 
   AlertCircle,
   Loader2,
-  FileText,
-  ListChecks,
-  NotebookPen,
-  AlignLeft
+  FileText
 } from 'lucide-react';
 import api from '../services/api';
 import { getScoreTone } from '../utils/scoreTone';
@@ -50,13 +47,17 @@ const getDisplayStatus = (task: any, nowMs: number): 'assigned' | 'pending' | 'e
   return 'assigned';
 };
 
-const hasTaskGuidance = (task: any) => {
-  return [
-    task?.description,
-    task?.rubric,
-    task?.studentInstructions,
-  ].some((item) => String(item || '').trim().length > 0);
-};
+const REQUIRED_SECTION_HEADINGS = [
+  'Topic (10)',
+  'Introduction (10)',
+  'Types/Categories (10)',
+  'Explanation of Concepts (20)',
+  'Examples (10)',
+  'Applications (10)',
+  'Images (10)',
+  'Conclusion (10)',
+  'References (10)',
+];
 
 const StudentTasks: React.FC = () => {
   const [tasks, setTasks] = useState<any[]>([]);
@@ -288,44 +289,6 @@ const StudentTasks: React.FC = () => {
                  By {task.teacher || 'Evaluator'}
               </p>
 
-              {hasTaskGuidance(task) && (
-                <div className="space-y-3 mb-6">
-                  {task.description && (
-                    <div className="bg-adaptive-nested p-3 rounded-2xl border border-white/5">
-                      <p className="text-[8px] font-black uppercase tracking-widest text-adaptive-sub mb-1.5 flex items-center gap-1.5">
-                        <AlignLeft size={11} className="theme-text-primary" />
-                        Assignment Brief
-                      </p>
-                      <p className="text-[11px] leading-relaxed text-adaptive-main font-medium whitespace-pre-line break-words line-clamp-3">
-                        {task.description}
-                      </p>
-                    </div>
-                  )}
-                  {task.rubric && (
-                    <div className="bg-adaptive-nested p-3 rounded-2xl border border-white/5">
-                      <p className="text-[8px] font-black uppercase tracking-widest text-adaptive-sub mb-1.5 flex items-center gap-1.5">
-                        <ListChecks size={11} className="theme-text-primary" />
-                        Evaluation Rubric
-                      </p>
-                      <p className="text-[11px] leading-relaxed text-adaptive-main font-medium whitespace-pre-line break-words line-clamp-3">
-                        {task.rubric}
-                      </p>
-                    </div>
-                  )}
-                  {task.studentInstructions && (
-                    <div className="bg-adaptive-nested p-3 rounded-2xl border border-white/5">
-                      <p className="text-[8px] font-black uppercase tracking-widest text-adaptive-sub mb-1.5 flex items-center gap-1.5">
-                        <NotebookPen size={11} className="theme-text-primary" />
-                        Student Instructions
-                      </p>
-                      <p className="text-[11px] leading-relaxed text-adaptive-main font-medium whitespace-pre-line break-words line-clamp-3">
-                        {task.studentInstructions}
-                      </p>
-                    </div>
-                  )}
-                </div>
-              )}
-
               <div className="mt-auto space-y-6">
                 <div className="bg-adaptive-nested p-3 rounded-2xl border border-white/5 space-y-2">
                   <div className="flex items-start justify-between gap-3 text-[10px] font-black uppercase tracking-widest">
@@ -412,43 +375,21 @@ const StudentTasks: React.FC = () => {
           </div>
 
           <div className="space-y-6">
-            {selectedTask && hasTaskGuidance(selectedTask) && (
-              <div className="bg-adaptive-nested/50 border border-white/10 rounded-3xl p-5 space-y-4">
-                {selectedTask.description && (
-                  <div>
-                    <p className="text-[9px] font-black text-adaptive-sub uppercase tracking-widest mb-1.5 flex items-center gap-2">
-                      <AlignLeft size={12} className="theme-text-primary" />
-                      Assignment Brief
-                    </p>
-                    <p className="text-sm text-adaptive-main leading-relaxed whitespace-pre-line break-words">
-                      {selectedTask.description}
-                    </p>
-                  </div>
-                )}
-                {selectedTask.rubric && (
-                  <div>
-                    <p className="text-[9px] font-black text-adaptive-sub uppercase tracking-widest mb-1.5 flex items-center gap-2">
-                      <ListChecks size={12} className="theme-text-primary" />
-                      Evaluation Rubric
-                    </p>
-                    <p className="text-sm text-adaptive-main leading-relaxed whitespace-pre-line break-words">
-                      {selectedTask.rubric}
-                    </p>
-                  </div>
-                )}
-                {selectedTask.studentInstructions && (
-                  <div>
-                    <p className="text-[9px] font-black text-adaptive-sub uppercase tracking-widest mb-1.5 flex items-center gap-2">
-                      <NotebookPen size={12} className="theme-text-primary" />
-                      Student Instructions
-                    </p>
-                    <p className="text-sm text-adaptive-main leading-relaxed whitespace-pre-line break-words">
-                      {selectedTask.studentInstructions}
-                    </p>
-                  </div>
-                )}
-              </div>
-            )}
+            <div className="bg-adaptive-nested/50 border border-white/10 rounded-3xl p-5 space-y-3">
+              <p className="text-[9px] font-black text-adaptive-sub uppercase tracking-widest">
+                Required Section Headings
+              </p>
+              <ul className="space-y-1 list-disc pl-5">
+                {REQUIRED_SECTION_HEADINGS.map((heading) => (
+                  <li key={heading} className="text-xs text-adaptive-main font-bold">
+                    {heading}
+                  </li>
+                ))}
+              </ul>
+              <p className="text-[10px] text-adaptive-sub font-bold">
+                Full marks per heading require at least 250 words in that section.
+              </p>
+            </div>
 
             <div className={`border-2 border-dashed rounded-3xl p-6 sm:p-12 text-center transition-all group cursor-pointer ${selectedFile ? 'theme-border-primary bg-adaptive-nested' : 'border-white/10 hover:theme-border-primary hover:bg-black/5 dark:hover:bg-white/5'}`}>
               <input 
