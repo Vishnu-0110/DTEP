@@ -14,7 +14,7 @@ const LOGIN_AUTO_RETRY_WINDOW_MS = 65000;
 const LOGIN_AUTO_RETRY_DELAY_BASE_MS = 2000;
 const LOGIN_AUTO_RETRY_DELAY_MAX_MS = 8000;
 const LOGIN_WARMUP_WAIT_CAP_MS = 12000;
-const SESSION_VALIDATION_INTERVAL_MS = 15000;
+const SESSION_VALIDATION_INTERVAL_MS = 5000;
 
 const wait = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
 const getLoginRetryDelay = (attempt: number) =>
@@ -137,6 +137,11 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const [user, setUser] = useState<User | null>(() => readStoredUser());
   const loading = false;
   const isDemoMode = false;
+  const clearAuthSession = useCallback(() => {
+    setUser(null);
+    localStorage.removeItem('dtep_user');
+    emitAuthStateChanged();
+  }, []);
 
   useEffect(() => {
     warmupBackendConnection().catch(() => {
@@ -158,7 +163,10 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     if (!user) return;
 
     let isMounted = true;
+    let isValidating = false;
     const validateActiveSession = async () => {
+      if (!isMounted || isValidating) return;
+      isValidating = true;
       try {
         await api.get('/system/maintenance', {
           [SKIP_RETRY_KEY]: true,
@@ -166,20 +174,40 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       } catch (error: any) {
         if (!isMounted) return;
         if (Number(error?.response?.status || 0) === 401) {
-          setUser(null);
-          localStorage.removeItem('dtep_user');
-          emitAuthStateChanged();
+          clearAuthSession();
         }
+      } finally {
+        isValidating = false;
       }
     };
 
+    // Validate immediately so stale sessions are kicked out without waiting for the interval.
+    void validateActiveSession();
     const sessionTimer = window.setInterval(validateActiveSession, SESSION_VALIDATION_INTERVAL_MS);
+    const handleVisibilityChange = () => {
+      if (document.visibilityState === 'visible') {
+        void validateActiveSession();
+      }
+    };
+    const handleFocus = () => {
+      void validateActiveSession();
+    };
+    const handleOnline = () => {
+      void validateActiveSession();
+    };
+
+    window.addEventListener('focus', handleFocus);
+    window.addEventListener('online', handleOnline);
+    document.addEventListener('visibilitychange', handleVisibilityChange);
 
     return () => {
       isMounted = false;
       window.clearInterval(sessionTimer);
+      window.removeEventListener('focus', handleFocus);
+      window.removeEventListener('online', handleOnline);
+      document.removeEventListener('visibilitychange', handleVisibilityChange);
     };
-  }, [user]);
+  }, [user, clearAuthSession]);
 
   const login = useCallback(async (email: string, password: string, expectedRole: UserRole) => {
     await Promise.race([
@@ -248,10 +276,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   }, []);
 
   const logout = useCallback(() => {
-    setUser(null);
-    localStorage.removeItem('dtep_user');
-    emitAuthStateChanged();
-  }, []);
+    clearAuthSession();
+  }, [clearAuthSession]);
 
   return (
     <AuthContext.Provider value={{ user, loading, login, logout, isDemoMode }}>
