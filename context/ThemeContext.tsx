@@ -7,8 +7,8 @@ export type ColorMode = 'light' | 'dark';
 
 const DEFAULT_THEME: ThemeType = 'midnight';
 const DEFAULT_MODE: ColorMode = 'dark';
-const THEME_KEY = 'dtep_theme';
-const MODE_KEY = 'dtep_mode';
+const LEGACY_THEME_KEY = 'dtep_theme';
+const LEGACY_MODE_KEY = 'dtep_mode';
 const USER_THEME_PREFIX = 'dtep_theme_user';
 const USER_MODE_PREFIX = 'dtep_mode_user';
 
@@ -36,22 +36,32 @@ const readStoredTheme = () => {
   if (typeof window === 'undefined') return DEFAULT_THEME;
 
   const userKey = getActiveUserPreferenceKey();
-  const storedForUser = String(localStorage.getItem(getThemeStorageKey(userKey)) || '').trim();
+  const storageKey = getThemeStorageKey(userKey);
+  const storedForUser = String(localStorage.getItem(storageKey) || '').trim();
   if (isThemeType(storedForUser)) return storedForUser;
 
-  const legacy = String(localStorage.getItem(THEME_KEY) || '').trim();
-  return isThemeType(legacy) ? legacy : DEFAULT_THEME;
+  const legacy = String(localStorage.getItem(LEGACY_THEME_KEY) || '').trim();
+  if (isThemeType(legacy)) {
+    localStorage.setItem(storageKey, legacy);
+    return legacy;
+  }
+
+  return DEFAULT_THEME;
 };
 
 const readStoredMode = () => {
   if (typeof window === 'undefined') return DEFAULT_MODE;
 
   const userKey = getActiveUserPreferenceKey();
-  const storedForUser = String(localStorage.getItem(getModeStorageKey(userKey)) || '').trim();
+  const storageKey = getModeStorageKey(userKey);
+  const storedForUser = String(localStorage.getItem(storageKey) || '').trim();
   if (isColorMode(storedForUser)) return storedForUser;
 
-  const legacy = String(localStorage.getItem(MODE_KEY) || '').trim();
-  if (isColorMode(legacy)) return legacy;
+  const legacy = String(localStorage.getItem(LEGACY_MODE_KEY) || '').trim();
+  if (isColorMode(legacy)) {
+    localStorage.setItem(storageKey, legacy);
+    return legacy;
+  }
 
   return DEFAULT_MODE;
 };
@@ -60,20 +70,19 @@ const persistThemeForActiveUser = (newTheme: ThemeType) => {
   if (typeof window === 'undefined') return;
   const userKey = getActiveUserPreferenceKey();
   localStorage.setItem(getThemeStorageKey(userKey), newTheme);
-  localStorage.setItem(THEME_KEY, newTheme);
 };
 
 const persistModeForActiveUser = (newMode: ColorMode) => {
   if (typeof window === 'undefined') return;
   const userKey = getActiveUserPreferenceKey();
   localStorage.setItem(getModeStorageKey(userKey), newMode);
-  localStorage.setItem(MODE_KEY, newMode);
 };
 
 interface ThemeContextType {
   theme: ThemeType;
   mode: ColorMode;
   setTheme: (theme: ThemeType) => void;
+  setMode: (mode: ColorMode) => void;
   toggleMode: () => void;
 }
 
@@ -87,11 +96,13 @@ export const ThemeProvider: React.FC<{ children: React.ReactNode }> = ({ childre
     setThemeState(newTheme);
     persistThemeForActiveUser(newTheme);
   };
-
-  const toggleMode = () => {
-    const newMode = mode === 'light' ? 'dark' : 'light';
+  const setMode = (newMode: ColorMode) => {
     setModeState(newMode);
     persistModeForActiveUser(newMode);
+  };
+
+  const toggleMode = () => {
+    setMode(mode === 'light' ? 'dark' : 'light');
   };
 
   useEffect(() => {
@@ -102,7 +113,14 @@ export const ThemeProvider: React.FC<{ children: React.ReactNode }> = ({ childre
       setModeState(readStoredMode());
     };
     const syncFromStorage = (event: StorageEvent) => {
-      if (!event.key || event.key.startsWith(USER_THEME_PREFIX) || event.key.startsWith(USER_MODE_PREFIX) || event.key === THEME_KEY || event.key === MODE_KEY || event.key === 'dtep_user') {
+      if (
+        !event.key ||
+        event.key.startsWith(USER_THEME_PREFIX) ||
+        event.key.startsWith(USER_MODE_PREFIX) ||
+        event.key === LEGACY_THEME_KEY ||
+        event.key === LEGACY_MODE_KEY ||
+        event.key === 'dtep_user'
+      ) {
         syncPreferences();
       }
     };
@@ -130,7 +148,7 @@ export const ThemeProvider: React.FC<{ children: React.ReactNode }> = ({ childre
   }, [mode, theme]);
 
   return (
-    <ThemeContext.Provider value={{ theme, mode, setTheme, toggleMode }}>
+    <ThemeContext.Provider value={{ theme, mode, setTheme, setMode, toggleMode }}>
       {children}
     </ThemeContext.Provider>
   );

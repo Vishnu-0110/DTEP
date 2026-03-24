@@ -22,6 +22,8 @@
       (() => {
         const DEFAULT_THEME = 'midnight';
         const DEFAULT_MODE = 'dark';
+        const LEGACY_THEME_KEY = 'dtep_theme';
+        const LEGACY_MODE_KEY = 'dtep_mode';
 
         const isThemeType = (value) =>
           value === 'midnight' ||
@@ -53,17 +55,28 @@
         };
 
         const userKey = getUserKey();
-        const userTheme = String(localStorage.getItem(`dtep_theme_user:${userKey}`) || '').trim();
-        const userMode = String(localStorage.getItem(`dtep_mode_user:${userKey}`) || '').trim();
-        const legacyTheme = String(localStorage.getItem('dtep_theme') || '').trim();
-        const legacyMode = String(localStorage.getItem('dtep_mode') || '').trim();
+        const userThemeKey = `dtep_theme_user:${userKey}`;
+        const userModeKey = `dtep_mode_user:${userKey}`;
+        const userTheme = String(localStorage.getItem(userThemeKey) || '').trim();
+        const userMode = String(localStorage.getItem(userModeKey) || '').trim();
+        const legacyTheme = String(localStorage.getItem(LEGACY_THEME_KEY) || '').trim();
+        const legacyMode = String(localStorage.getItem(LEGACY_MODE_KEY) || '').trim();
 
-        const theme = isThemeType(userTheme)
-          ? userTheme
-          : (isThemeType(legacyTheme) ? legacyTheme : DEFAULT_THEME);
-        const mode = isColorMode(userMode)
-          ? userMode
-          : (isColorMode(legacyMode) ? legacyMode : DEFAULT_MODE);
+        let theme = DEFAULT_THEME;
+        if (isThemeType(userTheme)) {
+          theme = userTheme;
+        } else if (isThemeType(legacyTheme)) {
+          theme = legacyTheme;
+          localStorage.setItem(userThemeKey, legacyTheme);
+        }
+
+        let mode = DEFAULT_MODE;
+        if (isColorMode(userMode)) {
+          mode = userMode;
+        } else if (isColorMode(legacyMode)) {
+          mode = legacyMode;
+          localStorage.setItem(userModeKey, legacyMode);
+        }
 
         document.documentElement.setAttribute('data-theme', theme);
         document.documentElement.setAttribute('data-mode', mode);
