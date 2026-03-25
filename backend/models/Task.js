@@ -1,5 +1,46 @@
 const mongoose = require('mongoose');
 
+const rubricSectionSchema = new mongoose.Schema(
+  {
+    key: {
+      type: String,
+      default: '',
+      trim: true,
+    },
+    label: {
+      type: String,
+      required: true,
+      trim: true,
+    },
+    maxMarks: {
+      type: Number,
+      required: true,
+      min: 1,
+      max: 100,
+    },
+    required: {
+      type: Boolean,
+      default: true,
+    },
+    minWords: {
+      type: Number,
+      default: 220,
+      min: 0,
+      max: 2000,
+    },
+    aliases: {
+      type: [String],
+      default: [],
+    },
+    guidance: {
+      type: String,
+      default: '',
+      trim: true,
+    },
+  },
+  { _id: false }
+);
+
 const taskSchema = new mongoose.Schema(
   {
     title: {
@@ -26,6 +67,10 @@ const taskSchema = new mongoose.Schema(
       type: String,
       default: '',
       trim: true,
+    },
+    rubricSections: {
+      type: [rubricSectionSchema],
+      default: [],
     },
     rubricModel: {
       type: String,

@@ -22,6 +22,15 @@ export interface Task {
   createdAt: string;
   requiredPages?: number;
   rubricText?: string;
+  rubricSections?: Array<{
+    key?: string;
+    label: string;
+    maxMarks: number;
+    required?: boolean;
+    minWords?: number;
+    aliases?: string[];
+    guidance?: string;
+  }>;
   rubricModel?: string;
   rubricGeneratedAt?: string | null;
   submissionCount?: number;

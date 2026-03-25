@@ -449,20 +449,6 @@ const Submissions: React.FC = () => {
   const isEvaluated = activeSubmission?.status === 'evaluated';
   const isMissedSubmission = Boolean(activeSubmission?.isAutoZero);
   const currentScoreTone = getScoreTone(marks);
-  const missingPointsList = dedupeMissingPoints([String(activeSubmission?.missingPoints || '')]);
-  const structureScore =
-    typeof activeSubmission?.evaluationDetails?.structureScore === 'number'
-      ? activeSubmission.evaluationDetails.structureScore
-      : null;
-  const rawAiScore =
-    typeof activeSubmission?.evaluationDetails?.aiRawMarks === 'number'
-      ? activeSubmission.evaluationDetails.aiRawMarks
-      : null;
-  const sectionIssues = Array.isArray(activeSubmission?.evaluationDetails?.sectionAnalysis)
-    ? activeSubmission.evaluationDetails.sectionAnalysis
-        .map((section: any) => String(section?.issue || '').trim())
-        .filter(Boolean)
-    : [];
 
   return (
     <div className="space-y-6 lg:space-y-10 animate-in fade-in duration-500 pb-10">
@@ -696,38 +682,6 @@ const Submissions: React.FC = () => {
                   {isMissedSubmission && (
                     <div className="bg-rose-500/10 border border-rose-500/20 p-3 rounded-xl text-rose-400 text-[10px] font-bold">
                       Deadline missed. The system assigned 0 marks automatically because no submission was uploaded.
-                    </div>
-                  )}
-                  {missingPointsList.length > 0 && (
-                    <div className="bg-amber-500/10 border border-amber-500/20 p-3 rounded-xl text-amber-400 text-[10px] font-bold">
-                      <p className="uppercase tracking-widest mb-2">Missing Points</p>
-                      <ul className="space-y-1 list-disc pl-4">
-                        {missingPointsList.map((point, idx) => (
-                          <li key={`${idx}-${point}`} className="text-[10px] font-bold text-amber-300 leading-relaxed">
-                            {point}
-                          </li>
-                        ))}
-                      </ul>
-                    </div>
-                  )}
-                  {(rawAiScore !== null || structureScore !== null || sectionIssues.length > 0) && (
-                    <div className="bg-blue-500/10 border border-blue-500/20 p-3 rounded-xl text-blue-200 text-[10px] font-bold space-y-2">
-                      <p className="uppercase tracking-widest">Rubric Breakdown</p>
-                      {rawAiScore !== null && (
-                        <p>Raw AI score: {rawAiScore}/100</p>
-                      )}
-                      {structureScore !== null && (
-                        <p>Structure score cap: {structureScore}/100</p>
-                      )}
-                      {sectionIssues.length > 0 && (
-                        <ul className="space-y-1 list-disc pl-4">
-                          {sectionIssues.map((issue: string, idx: number) => (
-                            <li key={`${idx}-${issue}`} className="leading-relaxed">
-                              {issue}
-                            </li>
-                          ))}
-                        </ul>
-                      )}
                     </div>
                   )}
                 </div>

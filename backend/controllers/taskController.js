@@ -2,34 +2,7 @@ const Task = require('../models/Task');
 const Submission = require('../models/Submission');
 const User = require('../models/User');
 const { syncMissedSubmissions } = require('../utils/missedSubmissionSync');
-const { generateAssignmentRubric } = require('../utils/aiEvaluation');
-
-const buildFallbackRubricText = ({ title, requiredPages }) => {
-  const pageLine = requiredPages > 0
-    ? `Submit at least ${requiredPages} pages in PDF format.`
-    : 'Submit a complete assignment with clear structure and relevant sources.';
-
-  return [
-    `Assignment focus: ${title}.`,
-    'Use clear headings and provide accurate, topic-focused explanations.',
-    'Include: Topic, Introduction, Types/Categories, Explanation of Concepts, Examples, Applications, Advantages and Disadvantages, Conclusion, References.',
-    pageLine,
-    'Use reliable academic references (textbooks, peer-reviewed journals, official educational sites).',
-  ].join('\n');
-};
-
-const buildFallbackDescription = ({ title, requiredPages }) => {
-  const pageLine = requiredPages > 0
-    ? `The submission must be at least ${requiredPages} pages in PDF format.`
-    : 'The submission should be comprehensive and well-structured.';
-
-  return [
-    `Prepare an academic assignment on "${title}".`,
-    'Define the topic clearly, explain core concepts, include examples, and provide practical applications.',
-    'Use headings, logical flow, and relevant references to support your explanation.',
-    pageLine,
-  ].join(' ');
-};
+const { generateAssignmentRubric, buildFallbackRubricFromTopic } = require('../utils/aiEvaluation');
 
 exports.createTask = async (req, res) => {
   const normalizeText = (value, max = 6000) => String(value || '').trim().slice(0, max);
@@ -59,16 +32,19 @@ exports.createTask = async (req, res) => {
   }
 
   try {
-    const fallbackDescription = buildFallbackDescription({
+    const fallbackRubric = buildFallbackRubricFromTopic({
       title,
+      description: providedDescription,
       requiredPages: Math.trunc(requiredPages),
     });
-    const resolvedDescription = hasProvidedDescription ? providedDescription : fallbackDescription;
-
-    const fallbackRubricText = buildFallbackRubricText({
-      title,
-      requiredPages: Math.trunc(requiredPages),
-    });
+    const fallbackDescription = String(fallbackRubric?.generatedDescription || '').trim();
+    const resolvedDescription = hasProvidedDescription
+      ? providedDescription
+      : (fallbackDescription || `Prepare an academic assignment on "${title}".`);
+    const fallbackRubricText = String(fallbackRubric?.rubricText || '').trim();
+    const fallbackRubricSections = Array.isArray(fallbackRubric?.rubricSections)
+      ? fallbackRubric.rubricSections
+      : [];
 
     const task = await Task.create({
       title,
@@ -76,6 +52,7 @@ exports.createTask = async (req, res) => {
       deadline,
       requiredPages: Math.trunc(requiredPages),
       rubricText: fallbackRubricText,
+      rubricSections: fallbackRubricSections,
       rubricModel: 'template',
       rubricGeneratedAt: new Date(),
       createdBy: req.user._id,
@@ -92,7 +69,8 @@ exports.createTask = async (req, res) => {
         });
         const rubricText = String(rubric?.rubricText || '').trim();
         const generatedDescription = String(rubric?.generatedDescription || '').trim();
-        if (!rubricText && !generatedDescription) return;
+        const rubricSections = Array.isArray(rubric?.rubricSections) ? rubric.rubricSections : [];
+        if (!rubricText && !generatedDescription && rubricSections.length === 0) return;
 
         const updatePayload = {
           rubricModel: String(rubric?.model || 'gemini').trim(),
@@ -101,6 +79,10 @@ exports.createTask = async (req, res) => {
 
         if (rubricText) {
           updatePayload.rubricText = rubricText;
+        }
+
+        if (rubricSections.length > 0) {
+          updatePayload.rubricSections = rubricSections;
         }
 
         if (!hasProvidedDescription && generatedDescription) {

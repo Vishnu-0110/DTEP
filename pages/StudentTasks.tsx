@@ -49,15 +49,10 @@ const getDisplayStatus = (task: any, nowMs: number): 'assigned' | 'reopened' | '
 };
 
 const DEFAULT_RUBRIC_GUIDANCE = [
-  'Topic',
-  'Introduction',
-  'Types / Categories',
-  'Explanation of Concepts',
-  'Examples',
-  'Applications',
-  'Advantages and Disadvantages',
-  'Conclusion',
-  'References',
+  'Use clear section headings that match the assignment rubric',
+  'Cover all required sections with sufficient depth',
+  'Add relevant examples/applications only when required by the topic',
+  'Conclude clearly and include credible references',
 ];
 const FEEDBACK_PREVIEW_MAX_CHARS = 220;
 
@@ -455,7 +450,7 @@ const StudentTasks: React.FC = () => {
                     ))}
                   </ul>
                   <p className="text-[10px] text-adaptive-sub font-bold">
-                    Include all rubric sections with clear headings for best scoring.
+                    Rubric sections are topic-specific. Follow the assignment rubric shown above.
                   </p>
                 </>
               )}

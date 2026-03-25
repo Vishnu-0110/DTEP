@@ -133,7 +133,11 @@ const extractSubmissionTextFromPdf = async (filePath) => {
 
 const runPostSubmissionAnalysis = async ({
   submissionId,
+  taskTitle,
   taskDescription,
+  rubricText,
+  rubricSections,
+  requiredPages,
   answerText,
   filePath,
   originalFileName,
@@ -170,7 +174,12 @@ const runPostSubmissionAnalysis = async ({
     }
 
     const answerForEvaluation = derivedAnswer.slice(0, 20000);
-    const aiResult = await evaluateAnswer(taskDescription, answerForEvaluation);
+    const aiResult = await evaluateAnswer(taskDescription, answerForEvaluation, {
+      title: taskTitle,
+      rubricText,
+      rubricSections,
+      requiredPages,
+    });
 
     submission.aiMarks = aiResult.marks;
     submission.aiFeedback = aiResult.feedback;
@@ -483,7 +492,11 @@ exports.submitTask = async (req, res) => {
 
       void runPostSubmissionAnalysis({
         submissionId: submission._id,
+        taskTitle: task.title,
         taskDescription: task.description,
+        rubricText: task.rubricText,
+        rubricSections: task.rubricSections,
+        requiredPages: Number(task.requiredPages || 0),
         answerText,
         filePath: req.file.path,
         originalFileName: req.file.originalname,
@@ -520,7 +533,11 @@ exports.submitTask = async (req, res) => {
     // Keep upload UX fast; run expensive extraction/AI work in the background.
     void runPostSubmissionAnalysis({
       submissionId: submission._id,
+      taskTitle: task.title,
       taskDescription: task.description,
+      rubricText: task.rubricText,
+      rubricSections: task.rubricSections,
+      requiredPages: Number(task.requiredPages || 0),
       answerText,
       filePath: req.file.path,
       originalFileName: req.file.originalname,
@@ -615,8 +632,8 @@ exports.evaluateSubmission = async (req, res) => {
 exports.generateAiAssist = async (req, res) => {
   try {
     const submission = await Submission.findById(req.params.id)
-      .populate('taskId', 'title description createdBy')
-      .populate('task', 'title description createdBy');
+      .populate('taskId', 'title description createdBy rubricText rubricSections requiredPages')
+      .populate('task', 'title description createdBy rubricText rubricSections requiredPages');
 
     if (!submission) {
       return res.status(404).json({ message: 'Submission not found' });
@@ -668,7 +685,12 @@ exports.generateAiAssist = async (req, res) => {
 
     const answerForEvaluation = answerText.slice(0, 20000);
 
-    const aiDraft = await evaluateDetailedAnswer(taskDoc.description, answerForEvaluation);
+    const aiDraft = await evaluateDetailedAnswer(taskDoc.description, answerForEvaluation, {
+      title: taskDoc.title,
+      rubricText: taskDoc.rubricText,
+      rubricSections: taskDoc.rubricSections,
+      requiredPages: Number(taskDoc.requiredPages || 0),
+    });
     const aiScore =
       typeof aiDraft.score === 'number'
         ? Math.max(0, Math.min(100, Math.round(aiDraft.score)))
