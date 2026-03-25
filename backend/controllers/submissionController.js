@@ -379,7 +379,7 @@ exports.submitTask = async (req, res) => {
       if (!isPdfUpload) {
         cleanupUploadedFile(req.file?.path);
         return res.status(400).json({
-          message: `This assignment requires exactly ${requiredPages} pages. Upload a PDF so pages can be validated.`,
+          message: `This assignment requires at least ${requiredPages} pages. Upload a PDF so pages can be validated.`,
         });
       }
 
@@ -397,10 +397,10 @@ exports.submitTask = async (req, res) => {
         });
       }
 
-      if (uploadedPageCount !== requiredPages) {
+      if (uploadedPageCount < requiredPages) {
         cleanupUploadedFile(req.file?.path);
         return res.status(400).json({
-          message: `Page count mismatch: expected ${requiredPages} pages, but received ${uploadedPageCount} pages.`,
+          message: `Page count is below requirement: minimum ${requiredPages} pages, but received ${uploadedPageCount} pages.`,
         });
       }
     }

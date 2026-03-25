@@ -121,7 +121,7 @@ const TaskDetails: React.FC = () => {
                 <p className="text-[9px] font-black uppercase tracking-widest theme-text-primary">AI Rubric Guidance</p>
                 {requiredPages > 0 && (
                   <p className="mt-2 text-[10px] font-black uppercase tracking-widest text-amber-300">
-                    Required length: exactly {requiredPages} page(s) in PDF.
+                    Required length: at least {requiredPages} page(s) in PDF.
                   </p>
                 )}
                 {rubricText && (

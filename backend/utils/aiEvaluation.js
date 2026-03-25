@@ -374,7 +374,7 @@ Task description:
 ${description || 'No description provided.'}
 
 Required pages:
-${requiredPages > 0 ? `${requiredPages} pages exactly` : 'No strict page count provided'}
+${requiredPages > 0 ? `At least ${requiredPages} pages` : 'No strict page count provided'}
 
 Generate a practical rubric and student instructions using standard academic expectations and commonly used educational references.
 

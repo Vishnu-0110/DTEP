@@ -429,7 +429,7 @@ const StudentTasks: React.FC = () => {
           }
         }}
       >
-        <div className="modal-surface rounded-[32px] sm:rounded-[40px] p-5 sm:p-10 w-full max-w-lg max-h-[calc(100dvh-2rem)] sm:max-h-[90vh] overflow-y-auto custom-scrollbar animate-in zoom-in-95 duration-300">
+        <div className="modal-surface rounded-[32px] sm:rounded-[40px] p-5 sm:p-8 lg:p-10 w-full max-w-5xl max-h-[calc(100dvh-2rem)] sm:max-h-[90vh] overflow-y-auto custom-scrollbar animate-in zoom-in-95 duration-300">
           <div className="text-center mb-6 sm:mb-8">
             <div className="w-14 h-14 bg-blue-500/10 rounded-2xl flex items-center justify-center text-blue-500 mx-auto mb-4 border border-blue-500/10 shadow-sm">
               <Upload size={24} />
@@ -438,7 +438,7 @@ const StudentTasks: React.FC = () => {
             <p className="text-adaptive-sub text-[10px] font-black uppercase tracking-widest mt-2">{selectedTask?.title}</p>
           </div>
 
-          <div className="space-y-6">
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 lg:gap-8 items-start">
             <div className="bg-adaptive-nested/50 border border-white/10 rounded-3xl p-5 space-y-3">
               <p className="text-[9px] font-black text-adaptive-sub uppercase tracking-widest">AI Rubric Guidance</p>
               {selectedTask?.rubricText ? (
@@ -461,57 +461,59 @@ const StudentTasks: React.FC = () => {
               )}
               {Number(selectedTask?.requiredPages || 0) > 0 && (
                 <p className="text-[10px] font-black uppercase tracking-widest text-amber-300">
-                  Required length: exactly {Number(selectedTask.requiredPages)} page(s) in PDF.
+                  Required length: at least {Number(selectedTask.requiredPages)} page(s) in PDF.
                 </p>
               )}
             </div>
 
-            <div className={`border-2 border-dashed rounded-3xl p-6 sm:p-12 text-center transition-all group cursor-pointer ${selectedFile ? 'theme-border-primary bg-adaptive-nested' : 'border-white/10 hover:theme-border-primary hover:bg-black/5 dark:hover:bg-white/5'}`}>
-              <input 
-                type="file" 
-                id="fileInput" 
-                className="hidden" 
-                onChange={handleFileChange}
-                accept=".pdf,.doc,.docx"
+            <div className="space-y-6">
+              <div className={`border-2 border-dashed rounded-3xl p-6 sm:p-12 text-center transition-all group cursor-pointer ${selectedFile ? 'theme-border-primary bg-adaptive-nested' : 'border-white/10 hover:theme-border-primary hover:bg-black/5 dark:hover:bg-white/5'}`}>
+                <input 
+                  type="file" 
+                  id="fileInput" 
+                  className="hidden" 
+                  onChange={handleFileChange}
+                  accept=".pdf,.doc,.docx"
+                />
+                <label htmlFor="fileInput" className="cursor-pointer block">
+                  <div className="flex flex-col items-center gap-4">
+                    <span className={`p-4 rounded-2xl transition-all shadow-md ${selectedFile ? 'theme-bg-primary text-white' : 'bg-adaptive-nested group-hover:scale-105'}`}>
+                      {selectedFile ? <CheckCircle2 size={24} /> : <FileText size={24} />}
+                    </span>
+                    <span className="font-bold text-adaptive-main tracking-tight text-sm break-all text-center">
+                      {selectedFile ? selectedFile.name : 'Select file to upload'}
+                    </span>
+                    <span className="text-[9px] text-adaptive-sub font-black uppercase tracking-widest opacity-60">
+                      PDF, DOCX (Max 10MB)
+                    </span>
+                  </div>
+                </label>
+              </div>
+
+              <textarea
+                value={answerText}
+                onChange={(e) => setAnswerText(e.target.value)}
+                placeholder="Optional: paste answer text for better AI review."
+                rows={5}
+                className="w-full bg-adaptive-nested border border-white/10 rounded-2xl py-3 px-4 text-sm text-adaptive-main focus:outline-none focus:theme-border-primary transition-all custom-scrollbar resize-none"
               />
-              <label htmlFor="fileInput" className="cursor-pointer block">
-                <div className="flex flex-col items-center gap-4">
-                  <span className={`p-4 rounded-2xl transition-all shadow-md ${selectedFile ? 'theme-bg-primary text-white' : 'bg-adaptive-nested group-hover:scale-105'}`}>
-                    {selectedFile ? <CheckCircle2 size={24} /> : <FileText size={24} />}
-                  </span>
-                  <span className="font-bold text-adaptive-main tracking-tight text-sm break-all text-center">
-                    {selectedFile ? selectedFile.name : 'Select file to upload'}
-                  </span>
-                  <span className="text-[9px] text-adaptive-sub font-black uppercase tracking-widest opacity-60">
-                    PDF, DOCX (Max 10MB)
-                  </span>
-                </div>
-              </label>
-            </div>
 
-            <textarea
-              value={answerText}
-              onChange={(e) => setAnswerText(e.target.value)}
-              placeholder="Optional: paste answer text for better AI review."
-              rows={4}
-              className="w-full bg-adaptive-nested border border-white/10 rounded-2xl py-3 px-4 text-sm text-adaptive-main focus:outline-none focus:theme-border-primary transition-all custom-scrollbar resize-none"
-            />
-
-            <div className="flex flex-col sm:flex-row gap-3">
-              <button 
-                onClick={() => { setIsUploadModalOpen(false); setAnswerText(''); }} 
-                disabled={uploading}
-                className="flex-1 py-4 btn-secondary rounded-2xl font-black uppercase tracking-widest text-[9px] transition-all"
-              >
-                Cancel
-              </button>
-              <button 
-                onClick={handleUpload}
-                disabled={!selectedFile || uploading}
-                className={`flex-1 btn-primary rounded-2xl py-4 transition-all flex items-center justify-center gap-2 px-8 text-[9px] uppercase tracking-widest ${(!selectedFile || uploading) ? 'opacity-30 cursor-not-allowed' : 'active:scale-95'}`}
-              >
-                {uploading ? <Loader2 size={16} className="animate-spin" /> : 'Submit'}
-              </button>
+              <div className="flex flex-col sm:flex-row gap-3">
+                <button 
+                  onClick={() => { setIsUploadModalOpen(false); setAnswerText(''); }} 
+                  disabled={uploading}
+                  className="flex-1 py-4 btn-secondary rounded-2xl font-black uppercase tracking-widest text-[9px] transition-all"
+                >
+                  Cancel
+                </button>
+                <button 
+                  onClick={handleUpload}
+                  disabled={!selectedFile || uploading}
+                  className={`flex-1 btn-primary rounded-2xl py-4 transition-all flex items-center justify-center gap-2 px-8 text-[9px] uppercase tracking-widest ${(!selectedFile || uploading) ? 'opacity-30 cursor-not-allowed' : 'active:scale-95'}`}
+                >
+                  {uploading ? <Loader2 size={16} className="animate-spin" /> : 'Submit'}
+                </button>
+              </div>
             </div>
           </div>
         </div>

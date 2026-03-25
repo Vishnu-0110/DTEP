@@ -6,7 +6,7 @@ const { generateAssignmentRubric } = require('../utils/aiEvaluation');
 
 const buildFallbackRubricText = ({ title, requiredPages }) => {
   const pageLine = requiredPages > 0
-    ? `Submit exactly ${requiredPages} pages in PDF format.`
+    ? `Submit at least ${requiredPages} pages in PDF format.`
     : 'Submit a complete assignment with clear structure and relevant sources.';
 
   return [
@@ -20,7 +20,7 @@ const buildFallbackRubricText = ({ title, requiredPages }) => {
 
 const buildFallbackDescription = ({ title, requiredPages }) => {
   const pageLine = requiredPages > 0
-    ? `The submission must be exactly ${requiredPages} pages in PDF format.`
+    ? `The submission must be at least ${requiredPages} pages in PDF format.`
     : 'The submission should be comprehensive and well-structured.';
 
   return [
