@@ -163,6 +163,12 @@ const EvaluatorTasks: React.FC = () => {
                   <Clock size={14} className="theme-text-primary" />
                   <span>Due {new Date(task.deadline).toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' })}</span>
                 </div>
+                {Number(task?.requiredPages || 0) > 0 && (
+                  <div className="flex items-center gap-3 text-amber-300 text-[10px] font-black uppercase tracking-widest bg-amber-500/10 p-3.5 rounded-2xl border border-amber-500/20">
+                    <ClipboardCheck size={14} />
+                    <span>Required Pages: {Number(task.requiredPages)}</span>
+                  </div>
+                )}
                 
                 <div className="space-y-3">
                   <div className="flex justify-between text-[9px] font-black text-adaptive-sub uppercase tracking-widest px-1">

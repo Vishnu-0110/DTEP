@@ -7,6 +7,7 @@ const INITIAL_FORM_DATA = {
   title: '',
   description: '',
   deadline: '',
+  requiredPages: '',
 };
 
 interface TaskModalProps {
@@ -98,6 +99,25 @@ const TaskModal: React.FC<TaskModalProps> = ({ isOpen, onClose, onSubmit }) => {
                 value={formData.deadline}
                 onChange={e => setFormData({...formData, deadline: e.target.value})}
               />
+            </div>
+
+            <div className="space-y-1.5">
+              <div className="flex items-center gap-2 ml-1 mb-1">
+                 <Type size={12} className="theme-text-primary" />
+                 <label className="text-[10px] font-black text-adaptive-sub uppercase tracking-widest">Required Pages (Optional)</label>
+              </div>
+              <input 
+                type="number"
+                min={1}
+                max={500}
+                placeholder="e.g. 5"
+                className="w-full surface-input rounded-xl py-3 px-3.5 transition-all font-bold text-sm"
+                value={formData.requiredPages}
+                onChange={e => setFormData({...formData, requiredPages: e.target.value})}
+              />
+              <p className="text-[9px] text-adaptive-sub font-bold uppercase tracking-widest opacity-60">
+                AI rubric will be generated automatically from title and description.
+              </p>
             </div>
 
             <div className="flex flex-col sm:flex-row gap-3 pt-2">

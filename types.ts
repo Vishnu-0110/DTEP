@@ -20,6 +20,10 @@ export interface Task {
   deadline: string;
   createdBy: string;
   createdAt: string;
+  requiredPages?: number;
+  rubricText?: string;
+  rubricModel?: string;
+  rubricGeneratedAt?: string | null;
   submissionCount?: number;
   submissions?: number;
   total?: number;
@@ -43,6 +47,7 @@ export interface Submission {
   aiEvaluatedAt?: string | null;
   aiModel?: string | null;
   isAutoZero?: boolean;
+  evaluationDetails?: any;
   allowResubmission?: boolean;
   reopenReason?: string;
   reopenedAt?: string | null;

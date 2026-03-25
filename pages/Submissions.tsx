@@ -18,6 +18,15 @@ import { useAuth } from '../context/AuthContext';
 import { getScoreTone } from '../utils/scoreTone';
 
 const clampMarks = (value: number) => Math.max(0, Math.min(100, Math.round(value)));
+const AI_ASSIST_TIMEOUT_MS = 180000;
+
+const escapeHtml = (value: string) =>
+  String(value || '')
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#39;');
 
 const Submissions: React.FC = () => {
   const { taskId } = useParams();
@@ -265,7 +274,11 @@ const Submissions: React.FC = () => {
     setAiError('');
     
     try {
-      const res = await api.post(`/submissions/${activeSubmission._id}/ai-assist`);
+      const res = await api.post(
+        `/submissions/${activeSubmission._id}/ai-assist`,
+        {},
+        { timeout: AI_ASSIST_TIMEOUT_MS }
+      );
       const serverSubmission = res.data?.submission || {};
       const scoreValue =
         typeof serverSubmission.aiMarks === 'number'
@@ -313,7 +326,11 @@ const Submissions: React.FC = () => {
 
     } catch (err: any) {
       console.error(err);
-      const serverMessage = err?.response?.data?.message || err?.message || 'AI evaluation failed.';
+      const errorCode = String(err?.code || '').trim().toUpperCase();
+      const timedOut = errorCode === 'ECONNABORTED';
+      const serverMessage = timedOut
+        ? 'AI evaluation is taking longer than expected. Please try again in a moment.'
+        : (err?.response?.data?.message || err?.message || 'AI evaluation failed.');
       setAiError(serverMessage);
       setFeedback(serverMessage);
     } finally {
@@ -329,6 +346,30 @@ const Submissions: React.FC = () => {
     }
 
     setIsViewing(true);
+    const previewWindow = window.open('', '_blank');
+    if (previewWindow && !previewWindow.closed) {
+      previewWindow.document.write(`
+        <html>
+          <head>
+            <title>Loading Submission Preview</title>
+            <style>
+              body { font-family: Arial, sans-serif; margin: 0; background: #0f172a; color: #e2e8f0; display: flex; min-height: 100vh; align-items: center; justify-content: center; }
+              .card { background: #111827; border: 1px solid #334155; border-radius: 16px; padding: 20px 24px; max-width: 560px; }
+              h1 { font-size: 14px; text-transform: uppercase; letter-spacing: 0.12em; margin: 0 0 8px 0; color: #93c5fd; }
+              p { margin: 0; font-size: 14px; line-height: 1.5; color: #cbd5e1; }
+            </style>
+          </head>
+          <body>
+            <div class="card">
+              <h1>Loading Submission</h1>
+              <p>Please wait while we open the student document in this temporary preview tab.</p>
+            </div>
+          </body>
+        </html>
+      `);
+      previewWindow.document.close();
+    }
+
     try {
       const response = await api.get(`/submissions/${activeSubmission._id}/view`, {
         responseType: 'blob'
@@ -346,9 +387,40 @@ const Submissions: React.FC = () => {
       const isPdf = contentType.includes('application/pdf') || fallbackFileName.toLowerCase().endsWith('.pdf');
 
       const objectUrl = window.URL.createObjectURL(response.data);
-      if (isPdf) {
+      if (previewWindow && !previewWindow.closed) {
+        if (isPdf) {
+          previewWindow.location.href = objectUrl;
+        } else {
+          const safeFileName = escapeHtml(fallbackFileName);
+          previewWindow.document.write(`
+            <html>
+              <head>
+                <title>Submission Preview</title>
+                <style>
+                  body { margin: 0; font-family: Arial, sans-serif; background: #0f172a; color: #e2e8f0; }
+                  .header { padding: 14px 16px; border-bottom: 1px solid #334155; background: #111827; display: flex; gap: 12px; align-items: center; justify-content: space-between; }
+                  .title { font-size: 13px; font-weight: 700; letter-spacing: 0.03em; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+                  .download { border: 1px solid #3b82f6; color: #bfdbfe; text-decoration: none; border-radius: 10px; padding: 8px 12px; font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.12em; }
+                  .hint { padding: 12px 16px; font-size: 12px; color: #cbd5e1; }
+                  iframe { width: 100%; height: calc(100vh - 88px); border: 0; background: #0b1120; }
+                </style>
+              </head>
+              <body>
+                <div class="header">
+                  <div class="title">${safeFileName}</div>
+                  <a class="download" href="${objectUrl}" download="${safeFileName}">Download</a>
+                </div>
+                <div class="hint">
+                  If preview is not supported for this file type, use Download.
+                </div>
+                <iframe src="${objectUrl}" title="Submission Preview"></iframe>
+              </body>
+            </html>
+          `);
+          previewWindow.document.close();
+        }
+      } else {
         const openedWindow = window.open(objectUrl, '_blank', 'noopener,noreferrer');
-
         if (!openedWindow) {
           const anchor = document.createElement('a');
           anchor.href = objectUrl;
@@ -358,20 +430,15 @@ const Submissions: React.FC = () => {
           anchor.click();
           anchor.remove();
         }
-      } else {
-        // Most browsers cannot render DOC/DOCX directly in a protected blob URL; download instead.
-        const anchor = document.createElement('a');
-        anchor.href = objectUrl;
-        anchor.download = fallbackFileName;
-        document.body.appendChild(anchor);
-        anchor.click();
-        anchor.remove();
       }
 
       window.setTimeout(() => {
         window.URL.revokeObjectURL(objectUrl);
-      }, 300000);
+      }, 10 * 60 * 1000);
     } catch (err: any) {
+      if (previewWindow && !previewWindow.closed) {
+        previewWindow.close();
+      }
       const message = await extractErrorMessage(err);
       alert(message);
     } finally {

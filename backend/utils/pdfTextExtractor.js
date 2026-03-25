@@ -23,4 +23,21 @@ const extractPDFText = async (filePath) => {
   }
 };
 
-module.exports = { extractPDFText };
+const extractPDFPageCount = async (filePath) => {
+  const resolved = resolveBackendPath(filePath);
+  if (!resolved) return null;
+
+  const dataBuffer = await fs.readFile(resolved);
+  const parser = new PDFParse({ data: dataBuffer });
+
+  try {
+    const info = await parser.getInfo();
+    const totalPages = Number(info?.total);
+    if (!Number.isFinite(totalPages) || totalPages <= 0) return null;
+    return Math.trunc(totalPages);
+  } finally {
+    await parser.destroy();
+  }
+};
+
+module.exports = { extractPDFText, extractPDFPageCount };

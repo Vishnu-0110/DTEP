@@ -48,16 +48,16 @@ const getDisplayStatus = (task: any, nowMs: number): 'assigned' | 'reopened' | '
   return 'assigned';
 };
 
-const REQUIRED_SECTION_HEADINGS = [
-  'Topic (10)',
-  'Introduction (10)',
-  'Types/Categories (10)',
-  'Explanation of Concepts (20)',
-  'Examples (10)',
-  'Applications (10)',
-  'Images (10)',
-  'Conclusion (10)',
-  'References (10)',
+const DEFAULT_RUBRIC_GUIDANCE = [
+  'Topic',
+  'Introduction',
+  'Types / Categories',
+  'Explanation of Concepts',
+  'Examples',
+  'Applications',
+  'Advantages and Disadvantages',
+  'Conclusion',
+  'References',
 ];
 const FEEDBACK_PREVIEW_MAX_CHARS = 220;
 
@@ -79,6 +79,9 @@ const StudentTasks: React.FC = () => {
   const [error, setError] = useState('');
   const [successMessage, setSuccessMessage] = useState('');
   const [nowMs, setNowMs] = useState(Date.now());
+  const [isFeedbackPreviewOpen, setIsFeedbackPreviewOpen] = useState(false);
+  const [feedbackPreviewTitle, setFeedbackPreviewTitle] = useState('');
+  const [feedbackPreviewText, setFeedbackPreviewText] = useState('');
 
   const getAssignedTaskTime = (task: any) => {
     const createdAtMs = new Date(task?.createdAt || 0).getTime();
@@ -130,6 +133,8 @@ const StudentTasks: React.FC = () => {
           reopenReason: String(submission?.reopenReason || '').trim(),
           reopenedAt: submission?.reopenedAt || null,
           resubmissionCount: Number(submission?.resubmissionCount || 0),
+          requiredPages: Number(task?.requiredPages || 0),
+          rubricText: String(task?.rubricText || '').trim(),
         };
       });
 
@@ -247,6 +252,12 @@ const StudentTasks: React.FC = () => {
     }
   };
 
+  const openFeedbackPreview = (taskTitle: string, feedbackText: string) => {
+    setFeedbackPreviewTitle(String(taskTitle || 'Assignment Feedback').trim() || 'Assignment Feedback');
+    setFeedbackPreviewText(String(feedbackText || '').trim());
+    setIsFeedbackPreviewOpen(true);
+  };
+
   return (
     <div className="space-y-6 lg:space-y-10 animate-in fade-in duration-500">
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
@@ -362,6 +373,13 @@ const StudentTasks: React.FC = () => {
                     <p className="text-[10px] text-adaptive-sub font-medium italic opacity-80 break-words leading-relaxed line-clamp-3">
                       {toFeedbackPreview(task.feedback || 'Deadline missed. The system automatically assigned 0 marks.')}
                     </p>
+                    <button
+                      type="button"
+                      onClick={() => openFeedbackPreview(task.title, task.feedback || 'Deadline missed. The system automatically assigned 0 marks.')}
+                      className="mt-3 rounded-xl border border-rose-500/30 bg-rose-500/10 px-3 py-1.5 text-[9px] font-black uppercase tracking-widest text-rose-400 transition-all hover:bg-rose-500/20 active:scale-95"
+                    >
+                      Preview
+                    </button>
                   </div>
                 ) : displayStatus === 'evaluated' ? (
                   <div className={`p-4 rounded-2xl border ${scoreTone.surfaceClass}`}>
@@ -372,6 +390,13 @@ const StudentTasks: React.FC = () => {
                     <p className="text-[10px] text-adaptive-sub font-medium italic opacity-70 break-words leading-relaxed line-clamp-3">
                         {toFeedbackPreview(task.feedback || 'System audit in progress...')}
                     </p>
+                    <button
+                      type="button"
+                      onClick={() => openFeedbackPreview(task.title, task.feedback || 'System audit in progress...')}
+                      className="mt-3 rounded-xl border border-white/20 bg-adaptive-nested px-3 py-1.5 text-[9px] font-black uppercase tracking-widest theme-text-primary transition-all hover:theme-bg-primary hover:text-white active:scale-95"
+                    >
+                      Preview
+                    </button>
                   </div>
                 ) : (
                   <div className="w-full bg-adaptive-nested text-adaptive-sub font-black py-4 rounded-2xl text-center text-[9px] uppercase tracking-widest opacity-40 italic">
@@ -415,19 +440,30 @@ const StudentTasks: React.FC = () => {
 
           <div className="space-y-6">
             <div className="bg-adaptive-nested/50 border border-white/10 rounded-3xl p-5 space-y-3">
-              <p className="text-[9px] font-black text-adaptive-sub uppercase tracking-widest">
-                Required Section Headings
-              </p>
-              <ul className="space-y-1 list-disc pl-5">
-                {REQUIRED_SECTION_HEADINGS.map((heading) => (
-                  <li key={heading} className="text-xs text-adaptive-main font-bold">
-                    {heading}
-                  </li>
-                ))}
-              </ul>
-              <p className="text-[10px] text-adaptive-sub font-bold">
-                Full marks per heading require at least 250 words in that section.
-              </p>
+              <p className="text-[9px] font-black text-adaptive-sub uppercase tracking-widest">AI Rubric Guidance</p>
+              {selectedTask?.rubricText ? (
+                <p className="text-xs text-adaptive-main font-bold leading-relaxed whitespace-pre-line break-words">
+                  {selectedTask.rubricText}
+                </p>
+              ) : (
+                <>
+                  <ul className="space-y-1 list-disc pl-5">
+                    {DEFAULT_RUBRIC_GUIDANCE.map((heading) => (
+                      <li key={heading} className="text-xs text-adaptive-main font-bold">
+                        {heading}
+                      </li>
+                    ))}
+                  </ul>
+                  <p className="text-[10px] text-adaptive-sub font-bold">
+                    Include all rubric sections with clear headings for best scoring.
+                  </p>
+                </>
+              )}
+              {Number(selectedTask?.requiredPages || 0) > 0 && (
+                <p className="text-[10px] font-black uppercase tracking-widest text-amber-300">
+                  Required length: exactly {Number(selectedTask.requiredPages)} page(s) in PDF.
+                </p>
+              )}
             </div>
 
             <div className={`border-2 border-dashed rounded-3xl p-6 sm:p-12 text-center transition-all group cursor-pointer ${selectedFile ? 'theme-border-primary bg-adaptive-nested' : 'border-white/10 hover:theme-border-primary hover:bg-black/5 dark:hover:bg-white/5'}`}>
@@ -477,6 +513,35 @@ const StudentTasks: React.FC = () => {
                 {uploading ? <Loader2 size={16} className="animate-spin" /> : 'Submit'}
               </button>
             </div>
+          </div>
+        </div>
+      </ModalShell>
+
+      <ModalShell
+        isOpen={isFeedbackPreviewOpen}
+        onClose={() => setIsFeedbackPreviewOpen(false)}
+      >
+        <div className="modal-surface rounded-[32px] sm:rounded-[40px] p-5 sm:p-8 w-full max-w-2xl max-h-[calc(100dvh-2rem)] sm:max-h-[90vh] overflow-y-auto custom-scrollbar animate-in zoom-in-95 duration-300">
+          <div className="flex items-start justify-between gap-4">
+            <div className="min-w-0">
+              <p className="text-[9px] font-black uppercase tracking-widest text-adaptive-sub">Remarks Preview</p>
+              <h3 className="mt-1 text-lg sm:text-xl font-black tracking-tight text-adaptive-main break-words">
+                {feedbackPreviewTitle}
+              </h3>
+            </div>
+            <button
+              type="button"
+              onClick={() => setIsFeedbackPreviewOpen(false)}
+              className="rounded-xl border border-white/10 bg-adaptive-nested px-3 py-2 text-[9px] font-black uppercase tracking-widest text-adaptive-sub hover:text-adaptive-main transition-colors"
+            >
+              Close
+            </button>
+          </div>
+
+          <div className="mt-5 rounded-2xl border border-white/10 bg-adaptive-nested/50 p-4 sm:p-5">
+            <p className="text-sm text-adaptive-main leading-relaxed whitespace-pre-line break-words">
+              {feedbackPreviewText || 'No remarks available.'}
+            </p>
           </div>
         </div>
       </ModalShell>

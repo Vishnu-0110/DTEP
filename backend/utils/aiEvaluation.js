@@ -71,13 +71,12 @@ const SECTION_GUIDANCE = [
   'Reward references only if they are relevant and meaningful.',
 ];
 
-const STRICT_FORMAT_RULES = [
+const BALANCED_FORMAT_RULES = [
   `The submission must explicitly include these section headings or clearly equivalent headings: ${SECTION_DEFINITIONS.map((section) => section.label).join(', ')}.`,
-  `Each required section must contain at least ${SECTION_WORD_MIN} words for full marks.`,
-  'If a required section is missing, give that section 0 marks.',
-  `If a section is present but below ${SECTION_WORD_MIN} words, apply a strict proportional penalty.`,
-  `Award full marks for a section only if the heading is present, word count is at least ${SECTION_WORD_MIN}, and quality is strong.`,
-  'Do not be lenient about missing rubric sections or short sections.',
+  `Use ${SECTION_WORD_MIN} words per section as a full-mark target, not an automatic fail threshold.`,
+  'If one section is missing, reduce marks proportionally instead of forcing an overall zero.',
+  `If a section is present but below ${SECTION_WORD_MIN} words, award partial credit based on relevance and quality.`,
+  'Reserve overall zero only for blank, copied template, or fully off-topic submissions.',
   'Mention missing sections and below-minimum sections clearly in feedback and missingPoints.',
 ];
 
@@ -134,6 +133,38 @@ const normalizeDetailedResult = (rawText, modelName) => {
     strengths: Array.isArray(parsed.strengths) ? parsed.strengths.map((v) => String(v).trim()).filter(Boolean) : [],
     weaknesses: Array.isArray(parsed.weaknesses) ? parsed.weaknesses.map((v) => String(v).trim()).filter(Boolean) : [],
     improvements: Array.isArray(parsed.improvements) ? parsed.improvements.map((v) => String(v).trim()).filter(Boolean) : [],
+    raw: rawText,
+    model: modelName,
+  };
+};
+
+const normalizeRubricResult = (rawText, modelName) => {
+  const parsed = parseJsonFromText(rawText) || {};
+
+  const toList = (value) =>
+    Array.isArray(value)
+      ? value.map((item) => String(item || '').trim()).filter(Boolean)
+      : [];
+
+  const requiredSections = dedupeList(toList(parsed.requiredSections));
+  const qualityChecks = dedupeList(toList(parsed.qualityChecks));
+  const referenceGuidance = dedupeList(toList(parsed.referenceGuidance));
+  const plainRubric = typeof parsed.rubricText === 'string'
+    ? parsed.rubricText.trim()
+    : String(rawText || '').trim();
+
+  const builtRubricLines = [
+    plainRubric,
+    requiredSections.length > 0 ? `Required sections: ${requiredSections.join(', ')}.` : '',
+    qualityChecks.length > 0 ? `Quality checks: ${qualityChecks.join(' | ')}.` : '',
+    referenceGuidance.length > 0 ? `Suggested sources: ${referenceGuidance.join(' | ')}.` : '',
+  ].map((line) => String(line || '').trim()).filter(Boolean);
+
+  return {
+    rubricText: builtRubricLines.join('\n'),
+    requiredSections,
+    qualityChecks,
+    referenceGuidance,
     raw: rawText,
     model: modelName,
   };
@@ -219,15 +250,16 @@ const findSections = (text) => {
 const getWordCountRatio = (wordCount) => {
   if (!Number.isFinite(wordCount) || wordCount <= 0) return 0;
   if (wordCount >= SECTION_WORD_MIN) return 1;
-  const distance = SECTION_WORD_MIN - wordCount;
-
-  if (distance <= 20) return 0.75;
-  if (distance <= 50) return 0.5;
-  if (distance <= 100) return 0.25;
-  return 0;
+  if (wordCount >= 200) return 0.8;
+  if (wordCount >= 150) return 0.65;
+  if (wordCount >= 100) return 0.5;
+  if (wordCount >= 60) return 0.35;
+  if (wordCount >= 25) return 0.2;
+  return 0.1;
 };
 
 const buildStructureAnalysis = (answer) => {
+  const answerWordCount = countWords(answer);
   const foundSections = findSections(answer);
   const foundByKey = new Map(foundSections.map((section) => [section.key, section]));
 
@@ -260,6 +292,7 @@ const buildStructureAnalysis = (answer) => {
 
   return {
     structureScore: sections.reduce((total, section) => total + section.earnedMarks, 0),
+    answerWordCount,
     sections,
     missingSections: sections.filter((section) => !section.headingFound).map((section) => section.label),
     belowMinimumSections: sections
@@ -286,8 +319,8 @@ Total = 100 marks.
 Section guidance:
 ${SECTION_GUIDANCE.map((line) => `- ${line}`).join('\n')}
 
-Strict rubric rules:
-${STRICT_FORMAT_RULES.map((line) => `- ${line}`).join('\n')}
+Balanced rubric rules:
+${BALANCED_FORMAT_RULES.map((line) => `- ${line}`).join('\n')}
 
 Return ONLY valid JSON:
 {
@@ -298,7 +331,7 @@ Return ONLY valid JSON:
 `;
 
 const buildDetailedPrompt = (question, answer) => `
-You are a strict academic evaluator.
+You are a balanced academic evaluator.
 
 Assignment:
 ${question || 'No assignment description provided.'}
@@ -312,10 +345,10 @@ ${RUBRIC_LINES.map((line) => `- ${line}`).join('\n')}
 Use this guidance while scoring:
 ${SECTION_GUIDANCE.map((line) => `- ${line}`).join('\n')}
 
-Strict rubric rules:
-${STRICT_FORMAT_RULES.map((line) => `- ${line}`).join('\n')}
+Balanced rubric rules:
+${BALANCED_FORMAT_RULES.map((line) => `- ${line}`).join('\n')}
 
-Score on a 0-100 scale. Be strict: if a section is missing or below ${SECTION_WORD_MIN} words, do not award full marks for that section.
+Score on a 0-100 scale. Missing sections should reduce marks significantly, but should not automatically force overall zero when meaningful content exists.
 
 Return ONLY valid JSON with this shape:
 {
@@ -324,6 +357,29 @@ Return ONLY valid JSON with this shape:
   "strengths": ["point 1", "point 2"],
   "weaknesses": ["point 1", "point 2"],
   "improvements": ["point 1", "point 2"]
+}
+`;
+
+const buildRubricPrompt = ({ title, description, requiredPages }) => `
+You are an academic evaluator and curriculum assistant.
+
+Task title:
+${title || 'Untitled assignment'}
+
+Task description:
+${description || 'No description provided.'}
+
+Required pages:
+${requiredPages > 0 ? `${requiredPages} pages exactly` : 'No strict page count provided'}
+
+Generate a practical rubric and student instructions using standard academic expectations and commonly used educational references.
+
+Return ONLY valid JSON:
+{
+  "rubricText": "concise rubric text students can follow",
+  "requiredSections": ["section 1", "section 2"],
+  "qualityChecks": ["quality rule 1", "quality rule 2"],
+  "referenceGuidance": ["source type 1", "source type 2"]
 }
 `;
 
@@ -353,15 +409,20 @@ const runGeminiPrompt = async (prompt, normalizer) => {
 
 const mergeAutomaticResult = (aiResult, structureAnalysis) => {
   const rawMarks = typeof aiResult.marks === 'number' ? aiResult.marks : null;
-  const finalMarks = rawMarks === null
+  const blendedMarks = rawMarks === null
     ? structureAnalysis.structureScore
-    : Math.min(rawMarks, structureAnalysis.structureScore);
+    : Math.round((rawMarks * 0.8) + (structureAnalysis.structureScore * 0.2));
+  const hasSubstantiveContent = Number(structureAnalysis.answerWordCount || 0) >= 80;
+  const finalMarks = Math.max(
+    hasSubstantiveContent ? 5 : 0,
+    Math.min(100, Math.max(0, blendedMarks))
+  );
   const violations = structureAnalysis.violations;
 
   const feedback = joinSentences([
     aiResult.feedback,
-    rawMarks !== null && finalMarks < rawMarks
-      ? `Structure compliance capped the score at ${structureAnalysis.structureScore}/100.`
+    rawMarks !== null && violations.length > 0
+      ? `Structure gaps reduced the score to ${finalMarks}/100 (structure score ${structureAnalysis.structureScore}/100).`
       : '',
     violations.length === 0
       ? `All required rubric sections were present with at least ${SECTION_WORD_MIN} words.`
@@ -381,9 +442,14 @@ const mergeAutomaticResult = (aiResult, structureAnalysis) => {
 
 const mergeDetailedResult = (aiResult, structureAnalysis) => {
   const rawScore = typeof aiResult.score === 'number' ? aiResult.score : null;
-  const finalScore = rawScore === null
+  const blendedScore = rawScore === null
     ? structureAnalysis.structureScore
-    : Math.min(rawScore, structureAnalysis.structureScore);
+    : Math.round((rawScore * 0.8) + (structureAnalysis.structureScore * 0.2));
+  const hasSubstantiveContent = Number(structureAnalysis.answerWordCount || 0) >= 80;
+  const finalScore = Math.max(
+    hasSubstantiveContent ? 5 : 0,
+    Math.min(100, Math.max(0, blendedScore))
+  );
   const violations = structureAnalysis.violations;
 
   const strengths = dedupeList([
@@ -406,8 +472,8 @@ const mergeDetailedResult = (aiResult, structureAnalysis) => {
 
   const summary = joinSentences([
     aiResult.summary,
-    rawScore !== null && finalScore < rawScore
-      ? `Structure compliance capped the final score at ${structureAnalysis.structureScore}/100.`
+    rawScore !== null && violations.length > 0
+      ? `Structure gaps reduced the final score to ${finalScore}/100 (structure score ${structureAnalysis.structureScore}/100).`
       : '',
   ]);
 
@@ -444,4 +510,11 @@ const evaluateDetailedAnswer = async (question, answer) => {
   return mergeDetailedResult(aiResult, structureAnalysis);
 };
 
-module.exports = { evaluateAnswer, evaluateDetailedAnswer };
+const generateAssignmentRubric = async ({ title, description, requiredPages = 0 }) => {
+  return runGeminiPrompt(
+    buildRubricPrompt({ title, description, requiredPages }),
+    normalizeRubricResult
+  );
+};
+
+module.exports = { evaluateAnswer, evaluateDetailedAnswer, generateAssignmentRubric };

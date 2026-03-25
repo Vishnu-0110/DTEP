@@ -16,6 +16,26 @@ const taskSchema = new mongoose.Schema(
       type: Date,
       required: true,
     },
+    requiredPages: {
+      type: Number,
+      default: 0,
+      min: 0,
+      max: 500,
+    },
+    rubricText: {
+      type: String,
+      default: '',
+      trim: true,
+    },
+    rubricModel: {
+      type: String,
+      default: '',
+      trim: true,
+    },
+    rubricGeneratedAt: {
+      type: Date,
+      default: null,
+    },
     createdBy: {
       type: mongoose.Schema.Types.ObjectId,
       ref: 'User',

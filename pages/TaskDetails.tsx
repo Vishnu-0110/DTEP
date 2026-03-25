@@ -44,6 +44,14 @@ const TaskDetails: React.FC = () => {
   const [nowMs, setNowMs] = useState(Date.now());
   const verifiedScore = typeof submission?.marks === 'number' ? submission.marks : null;
   const verifiedScoreTone = getScoreTone(verifiedScore);
+  const rubricText = String((task as any)?.rubricText || '').trim();
+  const requiredPages = Math.max(0, Math.trunc(Number((task as any)?.requiredPages || 0)));
+  const sectionAnalysis = Array.isArray((submission as any)?.evaluationDetails?.sectionAnalysis)
+    ? (submission as any).evaluationDetails.sectionAnalysis
+    : [];
+  const structureScore = typeof (submission as any)?.evaluationDetails?.structureScore === 'number'
+    ? (submission as any).evaluationDetails.structureScore
+    : null;
 
   useEffect(() => {
     const loadData = async () => {
@@ -108,6 +116,21 @@ const TaskDetails: React.FC = () => {
           <div className="space-y-3">
             <h1 className="text-3xl sm:text-4xl lg:text-5xl font-black text-adaptive-main tracking-tighter leading-tight uppercase">{task?.title || 'Architecture Deep Dive'}</h1>
             <p className="text-adaptive-sub text-base sm:text-lg font-medium leading-relaxed max-w-2xl">{task?.description || 'Advanced assignment focused on system patterns, performance audits, and atomic design integration.'}</p>
+            {(rubricText || requiredPages > 0) && (
+              <div className="mt-4 rounded-3xl border border-blue-500/20 bg-blue-500/10 p-4 sm:p-5">
+                <p className="text-[9px] font-black uppercase tracking-widest theme-text-primary">AI Rubric Guidance</p>
+                {requiredPages > 0 && (
+                  <p className="mt-2 text-[10px] font-black uppercase tracking-widest text-amber-300">
+                    Required length: exactly {requiredPages} page(s) in PDF.
+                  </p>
+                )}
+                {rubricText && (
+                  <p className="mt-2 text-sm text-adaptive-main font-medium leading-relaxed whitespace-pre-line break-words">
+                    {rubricText}
+                  </p>
+                )}
+              </div>
+            )}
           </div>
 
           <div className="flex flex-col sm:flex-row gap-4 sm:gap-8 py-8 border-y border-white/5">
@@ -198,6 +221,34 @@ const TaskDetails: React.FC = () => {
                   </ul>
                 </div>
               </div>
+
+              {sectionAnalysis.length > 0 && (
+                <div className="bg-adaptive-nested/30 border border-white/10 rounded-3xl p-6">
+                  <div className="flex items-center justify-between gap-3">
+                    <p className="text-[9px] font-black text-adaptive-sub uppercase tracking-widest">Rubric Evaluation</p>
+                    {typeof structureScore === 'number' && (
+                      <p className="text-[9px] font-black uppercase tracking-widest theme-text-primary">
+                        Structure Score: {structureScore}/100
+                      </p>
+                    )}
+                  </div>
+                  <div className="mt-3 space-y-2">
+                    {sectionAnalysis.map((item: any, idx: number) => (
+                      <div key={`${idx}-${item?.key || 'section'}`} className="rounded-2xl border border-white/10 bg-adaptive-nested px-4 py-3">
+                        <p className="text-xs font-black text-adaptive-main">
+                          {String(item?.label || 'Section')} • {Number(item?.earnedMarks || 0)}/{Number(item?.maxMarks || 0)}
+                        </p>
+                        <p className="mt-1 text-[10px] font-bold text-adaptive-sub">
+                          Word count: {Number(item?.wordCount || 0)}
+                        </p>
+                        {item?.issue ? (
+                          <p className="mt-1 text-[10px] font-bold text-amber-300 leading-relaxed">{String(item.issue)}</p>
+                        ) : null}
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
 
               {submission.feedback && (
                 <div className="bg-adaptive-nested/30 border border-white/5 rounded-3xl p-6">

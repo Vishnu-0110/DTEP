@@ -3,7 +3,7 @@ const Task = require('../models/Task');
 const fs = require('fs');
 const path = require('path');
 const { evaluateAnswer, evaluateDetailedAnswer } = require('../utils/aiEvaluation');
-const { extractPDFText } = require('../utils/pdfTextExtractor');
+const { extractPDFText, extractPDFPageCount } = require('../utils/pdfTextExtractor');
 const { resolveUploadDir } = require('../config/storage');
 const {
   MISSED_SUBMISSION_FEEDBACK,
@@ -373,6 +373,37 @@ exports.submitTask = async (req, res) => {
     const answerText = String(req.body.answer || req.body.answerText || '').trim();
     const normalizedPath = String(req.file.filename || '').trim();
     const isPdfUpload = String(req.file.originalname || '').toLowerCase().endsWith('.pdf');
+    const requiredPages = Math.max(0, Math.trunc(Number(task.requiredPages || 0)));
+
+    if (requiredPages > 0) {
+      if (!isPdfUpload) {
+        cleanupUploadedFile(req.file?.path);
+        return res.status(400).json({
+          message: `This assignment requires exactly ${requiredPages} pages. Upload a PDF so pages can be validated.`,
+        });
+      }
+
+      let uploadedPageCount = null;
+      try {
+        uploadedPageCount = await extractPDFPageCount(req.file.path);
+      } catch (_) {
+        uploadedPageCount = null;
+      }
+
+      if (!Number.isFinite(uploadedPageCount) || uploadedPageCount === null) {
+        cleanupUploadedFile(req.file?.path);
+        return res.status(400).json({
+          message: 'Could not validate PDF page count. Please upload a readable PDF document.',
+        });
+      }
+
+      if (uploadedPageCount !== requiredPages) {
+        cleanupUploadedFile(req.file?.path);
+        return res.status(400).json({
+          message: `Page count mismatch: expected ${requiredPages} pages, but received ${uploadedPageCount} pages.`,
+        });
+      }
+    }
 
     let submission = await findExistingSubmission();
     const canReplaceExistingSubmission = Boolean(submission?.allowResubmission);
