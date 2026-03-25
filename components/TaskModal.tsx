@@ -75,12 +75,11 @@ const TaskModal: React.FC<TaskModalProps> = ({ isOpen, onClose, onSubmit }) => {
             <div className="space-y-1.5">
               <div className="flex items-center gap-2 ml-1 mb-1">
                  <Edit3 size={12} className="theme-text-primary" />
-                 <label className="text-[10px] font-black text-adaptive-sub uppercase tracking-widest">Assignment Description</label>
+                 <label className="text-[10px] font-black text-adaptive-sub uppercase tracking-widest">Assignment Description (Optional)</label>
               </div>
               <textarea 
                 rows={3}
-                required
-                placeholder="Write the assignment question or topic..."
+                placeholder="Optional: leave blank to auto-generate from title."
                 className="w-full surface-input rounded-xl py-3 px-3.5 transition-all font-medium resize-none leading-relaxed text-sm custom-scrollbar"
                 value={formData.description}
                 onChange={e => setFormData({...formData, description: e.target.value})}

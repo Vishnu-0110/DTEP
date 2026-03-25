@@ -152,6 +152,9 @@ const normalizeRubricResult = (rawText, modelName) => {
   const plainRubric = typeof parsed.rubricText === 'string'
     ? parsed.rubricText.trim()
     : String(rawText || '').trim();
+  const generatedDescription = typeof parsed.generatedDescription === 'string'
+    ? parsed.generatedDescription.trim()
+    : '';
 
   const builtRubricLines = [
     plainRubric,
@@ -162,6 +165,7 @@ const normalizeRubricResult = (rawText, modelName) => {
 
   return {
     rubricText: builtRubricLines.join('\n'),
+    generatedDescription,
     requiredSections,
     qualityChecks,
     referenceGuidance,
@@ -376,6 +380,7 @@ Generate a practical rubric and student instructions using standard academic exp
 
 Return ONLY valid JSON:
 {
+  "generatedDescription": "short assignment description generated from title",
   "rubricText": "concise rubric text students can follow",
   "requiredSections": ["section 1", "section 2"],
   "qualityChecks": ["quality rule 1", "quality rule 2"],

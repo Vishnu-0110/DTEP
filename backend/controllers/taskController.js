@@ -18,10 +18,24 @@ const buildFallbackRubricText = ({ title, requiredPages }) => {
   ].join('\n');
 };
 
+const buildFallbackDescription = ({ title, requiredPages }) => {
+  const pageLine = requiredPages > 0
+    ? `The submission must be exactly ${requiredPages} pages in PDF format.`
+    : 'The submission should be comprehensive and well-structured.';
+
+  return [
+    `Prepare an academic assignment on "${title}".`,
+    'Define the topic clearly, explain core concepts, include examples, and provide practical applications.',
+    'Use headings, logical flow, and relevant references to support your explanation.',
+    pageLine,
+  ].join(' ');
+};
+
 exports.createTask = async (req, res) => {
   const normalizeText = (value, max = 6000) => String(value || '').trim().slice(0, max);
   const title = normalizeText(req.body?.title, 180);
-  const description = normalizeText(req.body?.description, 6000);
+  const providedDescription = normalizeText(req.body?.description, 6000);
+  const hasProvidedDescription = providedDescription.length > 0;
   const rawDeadline = String(req.body?.deadline || '').trim();
   const deadline = new Date(rawDeadline);
   const rawRequiredPages = req.body?.requiredPages;
@@ -29,8 +43,8 @@ exports.createTask = async (req, res) => {
   const hasRequiredPages = normalizedRequiredPages.length > 0;
   const requiredPages = hasRequiredPages ? Number(normalizedRequiredPages) : 0;
 
-  if (!title || !description || !rawDeadline || !Number.isFinite(deadline.getTime())) {
-    return res.status(400).json({ message: 'title, description, and a valid deadline are required.' });
+  if (!title || !rawDeadline || !Number.isFinite(deadline.getTime())) {
+    return res.status(400).json({ message: 'title and a valid deadline are required.' });
   }
 
   if (hasRequiredPages) {
@@ -45,6 +59,12 @@ exports.createTask = async (req, res) => {
   }
 
   try {
+    const fallbackDescription = buildFallbackDescription({
+      title,
+      requiredPages: Math.trunc(requiredPages),
+    });
+    const resolvedDescription = hasProvidedDescription ? providedDescription : fallbackDescription;
+
     const fallbackRubricText = buildFallbackRubricText({
       title,
       requiredPages: Math.trunc(requiredPages),
@@ -52,7 +72,7 @@ exports.createTask = async (req, res) => {
 
     const task = await Task.create({
       title,
-      description,
+      description: resolvedDescription,
       deadline,
       requiredPages: Math.trunc(requiredPages),
       rubricText: fallbackRubricText,
@@ -67,18 +87,28 @@ exports.createTask = async (req, res) => {
       try {
         const rubric = await generateAssignmentRubric({
           title,
-          description,
+          description: resolvedDescription,
           requiredPages: Math.trunc(requiredPages),
         });
         const rubricText = String(rubric?.rubricText || '').trim();
-        if (!rubricText) return;
+        const generatedDescription = String(rubric?.generatedDescription || '').trim();
+        if (!rubricText && !generatedDescription) return;
+
+        const updatePayload = {
+          rubricModel: String(rubric?.model || 'gemini').trim(),
+          rubricGeneratedAt: new Date(),
+        };
+
+        if (rubricText) {
+          updatePayload.rubricText = rubricText;
+        }
+
+        if (!hasProvidedDescription && generatedDescription) {
+          updatePayload.description = generatedDescription;
+        }
 
         await Task.findByIdAndUpdate(task._id, {
-          $set: {
-            rubricText,
-            rubricModel: String(rubric?.model || 'gemini').trim(),
-            rubricGeneratedAt: new Date(),
-          },
+          $set: updatePayload,
         });
       } catch (_) {
         // Keep fallback rubric when AI generation is unavailable.
