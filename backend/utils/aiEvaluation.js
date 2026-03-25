@@ -6,6 +6,18 @@ const MODEL_SEQUENCE = [PREFERRED_MODEL, 'gemini-2.0-flash', 'gemini-2.5-flash']
 const SECTION_WORD_MIN = 250;
 
 const escapeRegExp = (value) => String(value || '').replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+const normalizeHeadingText = (value) => (
+  String(value || '')
+    .toLowerCase()
+    .replace(/[–—]/g, '-')
+    .replace(/\//g, ' / ')
+    .replace(/[^a-z0-9/&\s-]/g, ' ')
+    .replace(/\s+/g, ' ')
+    .trim()
+);
+const stripHeadingNumberPrefix = (value) => (
+  String(value || '').replace(/^\s*\(?\d+(?:\.\d+)*\)?\s*[\).:-]?\s*/i, '').trim()
+);
 const countWords = (value) => {
   const matches = String(value || '').trim().match(/[A-Za-z0-9]+(?:['-][A-Za-z0-9]+)*/g);
   return matches ? matches.length : 0;
@@ -13,33 +25,73 @@ const countWords = (value) => {
 
 const buildHeadingRegex = (headings) => {
   const options = headings.map(escapeRegExp).join('|');
-  const optionalPrefix = '(?:\\d+\\s*[\\).:-]\\s*)?';
+  const optionalPrefix = '(?:\\(?\\d+(?:\\.\\d+)*\\)?\\s*[\\).:-]?\\s*)?';
+  const optionalContinuation = '(?:\\s+[A-Za-z0-9][A-Za-z0-9/&(),\'-]*){0,14}';
   const optionalScore = '(?:\\s*\\((?:\\d+\\s*(?:marks?)?|part\\s*\\d+)\\))?';
   const optionalPart = '(?:\\s*[-–—]\\s*part\\s*\\d+)?';
+  const optionalSubtitle = '(?:\\s*[:\\-–—]\\s*[A-Za-z0-9][^\\n\\r]{0,180})?';
 
   return new RegExp(
-    `^\\s*${optionalPrefix}(?:${options})\\b${optionalScore}${optionalPart}\\s*:?\\s*$`,
-    'im'
+    `^\\s*${optionalPrefix}(?:${options})\\b${optionalContinuation}${optionalScore}${optionalPart}${optionalSubtitle}\\s*$`,
+    'i'
   );
 };
 
 const BASE_SECTION_DEFINITIONS = [
-  { key: 'topic', label: 'Topic', maxMarks: 10, headings: ['topic', 'title', 'subject'] },
+  { key: 'topic', label: 'Topic', maxMarks: 10, headings: ['topic', 'title', 'subject', 'assignment topic'] },
   { key: 'introduction', label: 'Introduction', maxMarks: 10, headings: ['introduction', 'intro'] },
   {
     key: 'types',
     label: 'Types / Categories',
     maxMarks: 10,
-    headings: ['types / categories', 'types/categories', 'types and categories', 'types', 'categories'],
+    headings: [
+      'types / categories',
+      'types/categories',
+      'types and categories',
+      'types',
+      'categories',
+      'definitions',
+      'defining',
+      'classification',
+      'key characteristics',
+    ],
   },
   {
     key: 'concepts',
     label: 'Explanation of Concepts',
     maxMarks: 20,
-    headings: ['explanation of concepts', 'concept explanation', 'explanation', 'concepts'],
+    headings: [
+      'explanation of concepts',
+      'concept explanation',
+      'explanation',
+      'concepts',
+      'conceptual framework',
+      'implications',
+      'considerations',
+    ],
   },
-  { key: 'examples', label: 'Examples', maxMarks: 10, headings: ['examples', 'example'] },
-  { key: 'applications', label: 'Applications', maxMarks: 10, headings: ['applications', 'application'] },
+  {
+    key: 'examples',
+    label: 'Examples',
+    maxMarks: 10,
+    headings: ['examples', 'example', 'case study', 'case studies', 'illustration', 'illustrations'],
+  },
+  {
+    key: 'applications',
+    label: 'Applications',
+    maxMarks: 10,
+    headings: [
+      'applications',
+      'application',
+      'practical applications',
+      'use cases',
+      'implementation',
+      'best practices',
+      'future directions',
+      'role of',
+      'the role of',
+    ],
+  },
   {
     key: 'images',
     label: 'Images',
@@ -53,6 +105,7 @@ const BASE_SECTION_DEFINITIONS = [
 const SECTION_DEFINITIONS = BASE_SECTION_DEFINITIONS.map((section) => ({
   ...section,
   regex: buildHeadingRegex(section.headings),
+  normalizedHeadings: section.headings.map(normalizeHeadingText).filter(Boolean),
 }));
 
 const RUBRIC_LINES = SECTION_DEFINITIONS.map(
@@ -217,24 +270,123 @@ const consumeLineBreaks = (text, startIndex) => {
   return cursor;
 };
 
-const findSections = (text) => {
+const inferTopicHeading = (text) => {
   const source = String(text || '');
-  const matches = [];
+  const lines = source
+    .split(/\r?\n/)
+    .map((line) => line.trim())
+    .filter(Boolean)
+    .slice(0, 20);
 
-  for (const section of SECTION_DEFINITIONS) {
-    const match = section.regex.exec(source);
-    if (!match) continue;
-
-    matches.push({
-      key: section.key,
-      label: section.label,
-      maxMarks: section.maxMarks,
-      heading: match[0].trim(),
-      index: match.index,
-      matchLength: match[0].length,
-    });
+  for (const line of lines) {
+    const normalized = line.replace(/\s+/g, ' ').trim();
+    if (!normalized) continue;
+    if (/^--\s*\d+\s+of\s+\d+\s*--$/i.test(normalized)) continue;
+    if (/^(abstract|academic assignment|table of contents|references)$/i.test(normalized)) continue;
+    const words = countWords(normalized);
+    if (words >= 4 && words <= 25) {
+      return normalized;
+    }
   }
 
+  return '';
+};
+
+const getLineEntries = (text) => {
+  const source = String(text || '');
+  const entries = [];
+  const lineRegex = /([^\r\n]*)(\r\n|\n|\r|$)/g;
+  let match = null;
+
+  while ((match = lineRegex.exec(source)) !== null) {
+    const lineText = String(match[1] || '');
+    const newline = String(match[2] || '');
+    const start = match.index;
+    const end = start + lineText.length;
+    const trimmed = lineText.trim();
+
+    entries.push({
+      raw: lineText,
+      trimmed,
+      start,
+      end,
+    });
+
+    if (!newline) break;
+  }
+
+  return entries;
+};
+
+const isLikelyHeadingLine = (line) => {
+  const value = String(line || '').trim();
+  if (!value) return false;
+  if (value.length > 220) return false;
+  if (/^--\s*\d+\s+of\s+\d+\s*--$/i.test(value)) return false;
+
+  const words = countWords(value);
+  if (words === 0 || words > 24) return false;
+  if (/[.!?]\s*$/.test(value) && !/:\s*$/.test(value)) return false;
+  if ((value.match(/[,;]/g) || []).length > 1) return false;
+
+  const hasNumberPrefix = /^\s*\(?\d+(?:\.\d+)*\)?\s*[\).:-]?\s+/.test(value);
+  const hasHeadingDivider = /:|\s[-–—]\s/.test(value);
+  const isAllCapsHeading = /^[A-Z0-9\s/&(),.'-]+$/.test(value) && /[A-Z]/.test(value);
+  const isShortTitleCase = /^[A-Z][A-Za-z0-9/&()'-]*(?:\s+[A-Z][A-Za-z0-9/&()'-]*){0,7}$/.test(value);
+  const startsWithTitleToken = /^[A-Z0-9]/.test(value);
+
+  if (
+    !hasNumberPrefix &&
+    !isAllCapsHeading &&
+    !isShortTitleCase &&
+    !(hasHeadingDivider && startsWithTitleToken)
+  ) {
+    return false;
+  }
+
+  return true;
+};
+
+const matchesSectionHeadingLine = (line, section) => {
+  const withoutPrefix = stripHeadingNumberPrefix(line);
+  const normalized = normalizeHeadingText(withoutPrefix);
+  if (!normalized) return false;
+
+  return section.normalizedHeadings.some((alias) => (
+    normalized === alias ||
+    normalized.startsWith(`${alias} `) ||
+    normalized.endsWith(` ${alias}`) ||
+    normalized.includes(` ${alias} `)
+  ));
+};
+
+const findSections = (text) => {
+  const source = String(text || '');
+  const lineEntries = getLineEntries(source);
+  const matchesByKey = new Map();
+
+  for (const lineEntry of lineEntries) {
+    if (!isLikelyHeadingLine(lineEntry.trimmed)) continue;
+
+    for (const section of SECTION_DEFINITIONS) {
+      if (matchesByKey.has(section.key)) continue;
+
+      const regexMatched = section.regex.test(lineEntry.trimmed);
+      const aliasMatched = matchesSectionHeadingLine(lineEntry.trimmed, section);
+      if (!regexMatched && !aliasMatched) continue;
+
+      matchesByKey.set(section.key, {
+        key: section.key,
+        label: section.label,
+        maxMarks: section.maxMarks,
+        heading: lineEntry.trimmed,
+        index: lineEntry.start,
+        matchLength: lineEntry.end - lineEntry.start,
+      });
+    }
+  }
+
+  const matches = Array.from(matchesByKey.values());
   matches.sort((left, right) => left.index - right.index);
 
   return matches.map((match, index) => {
@@ -265,10 +417,23 @@ const getWordCountRatio = (wordCount) => {
 const buildStructureAnalysis = (answer) => {
   const answerWordCount = countWords(answer);
   const foundSections = findSections(answer);
+  const inferredTopicHeading = inferTopicHeading(answer);
   const foundByKey = new Map(foundSections.map((section) => [section.key, section]));
 
   const sections = SECTION_DEFINITIONS.map((definition) => {
-    const found = foundByKey.get(definition.key) || null;
+    let found = foundByKey.get(definition.key) || null;
+    if (!found && definition.key === 'topic' && inferredTopicHeading) {
+      found = {
+        key: definition.key,
+        label: definition.label,
+        maxMarks: definition.maxMarks,
+        heading: inferredTopicHeading,
+        index: 0,
+        matchLength: inferredTopicHeading.length,
+        content: inferredTopicHeading,
+        wordCount: countWords(inferredTopicHeading),
+      };
+    }
     const wordCount = found?.wordCount || 0;
     const withinTarget = found ? wordCount >= SECTION_WORD_MIN : false;
     const ratio = found ? getWordCountRatio(wordCount) : 0;
