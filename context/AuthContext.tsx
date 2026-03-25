@@ -14,7 +14,7 @@ const LOGIN_AUTO_RETRY_WINDOW_MS = 65000;
 const LOGIN_AUTO_RETRY_DELAY_BASE_MS = 2000;
 const LOGIN_AUTO_RETRY_DELAY_MAX_MS = 8000;
 const LOGIN_WARMUP_WAIT_CAP_MS = 12000;
-const SESSION_VALIDATION_INTERVAL_MS = 5000;
+const SESSION_VALIDATION_INTERVAL_MS = 30000;
 
 const wait = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
 const getLoginRetryDelay = (attempt: number) =>
@@ -166,6 +166,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     let isValidating = false;
     const validateActiveSession = async () => {
       if (!isMounted || isValidating) return;
+      if (document.visibilityState !== 'visible') return;
+      if (typeof navigator !== 'undefined' && navigator.onLine === false) return;
       isValidating = true;
       try {
         await api.get('/system/maintenance', {

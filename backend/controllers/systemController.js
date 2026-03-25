@@ -1,6 +1,10 @@
 const Task = require('../models/Task');
 const Submission = require('../models/Submission');
 const SystemSetting = require('../models/SystemSetting');
+const {
+  getMaintenanceSettingCached,
+  primeMaintenanceSettingCache,
+} = require('../utils/maintenanceCache');
 
 const GLOBAL_KEY = 'global';
 
@@ -57,7 +61,7 @@ const toObjectIdString = (value) => {
 
 exports.getMaintenanceStatus = async (req, res) => {
   try {
-    const setting = await SystemSetting.findOne({ key: GLOBAL_KEY }).select('maintenanceMode maintenanceMessage updatedAt');
+    const setting = await getMaintenanceSettingCached();
     return res.json(toMaintenancePayload(setting));
   } catch (error) {
     return res.status(500).json({ message: error.message || 'Failed to load maintenance status.' });
@@ -84,8 +88,9 @@ exports.updateMaintenanceStatus = async (req, res) => {
           updatedAt,
         }
       },
-      { new: true, upsert: true, setDefaultsOnInsert: true }
+      { new: true, upsert: true, setDefaultsOnInsert: true, lean: true }
     ).select('maintenanceMode maintenanceMessage updatedAt');
+    primeMaintenanceSettingCache(setting);
 
     return res.json(toMaintenancePayload(setting));
   } catch (error) {
@@ -99,13 +104,14 @@ exports.getStudentNotifications = async (req, res) => {
     const sinceMaintenanceAt = parseDateQuery(req.query.sinceMaintenanceAt);
 
     const taskFilter = sinceTaskAt ? { createdAt: { $gt: sinceTaskAt } } : {};
-    const newTasks = await Task.find(taskFilter)
-      .sort('-createdAt')
-      .limit(20)
-      .lean()
-      .select('_id title deadline createdAt');
-
-    const setting = await SystemSetting.findOne({ key: GLOBAL_KEY }).select('maintenanceMode maintenanceMessage updatedAt');
+    const [newTasks, setting] = await Promise.all([
+      Task.find(taskFilter)
+        .sort('-createdAt')
+        .limit(20)
+        .lean()
+        .select('_id title deadline createdAt'),
+      getMaintenanceSettingCached(),
+    ]);
     const maintenanceStatus = toMaintenancePayload(setting);
     const maintenanceEvent = toMaintenanceEvent(maintenanceStatus, sinceMaintenanceAt);
 
@@ -125,10 +131,12 @@ exports.getEvaluatorNotifications = async (req, res) => {
     const sinceSubmissionAt = parseDateQuery(req.query.sinceSubmissionAt);
     const sinceMaintenanceAt = parseDateQuery(req.query.sinceMaintenanceAt);
 
-    const ownedTasks = await Task.find({ createdBy: req.user._id })
-      .sort('-createdAt')
-      .select('_id title')
-      .lean();
+    const [ownedTasks, setting] = await Promise.all([
+      Task.find({ createdBy: req.user._id })
+        .select('_id title')
+        .lean(),
+      getMaintenanceSettingCached(),
+    ]);
 
     const ownedTaskIds = ownedTasks.map((task) => task._id);
     const taskTitleMap = new Map(
@@ -173,7 +181,6 @@ exports.getEvaluatorNotifications = async (req, res) => {
       });
     }
 
-    const setting = await SystemSetting.findOne({ key: GLOBAL_KEY }).select('maintenanceMode maintenanceMessage updatedAt');
     const maintenanceStatus = toMaintenancePayload(setting);
     const maintenanceEvent = toMaintenanceEvent(maintenanceStatus, sinceMaintenanceAt);
 

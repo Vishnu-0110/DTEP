@@ -38,9 +38,11 @@ export type EvaluatorSubmissionNotification = {
 type StudentRealtimeNotifierProps = {
   onTaskNotification?: (notification: StudentTaskNotification) => void;
   onEvaluatorSubmissionNotification?: (notification: EvaluatorSubmissionNotification) => void;
+  onMaintenanceStatusChange?: (status: MaintenanceStatus | null) => void;
 };
 
-const POLL_INTERVAL_MS = 15000;
+const POLL_INTERVAL_MS = 30000;
+const HIDDEN_POLL_INTERVAL_MS = 90000;
 const TOAST_TTL_MS = 7000;
 const LAST_STUDENT_TASK_KEY = 'dtep_last_student_task_notification_at';
 const LAST_EVALUATOR_SUBMISSION_KEY = 'dtep_last_evaluator_submission_at';
@@ -86,9 +88,31 @@ const getSafeSinceIso = (rawValue: string | null, fallbackIso: string) => {
   return new Date(parsedMs).toISOString();
 };
 
+const normalizeMaintenanceStatus = (value: any): MaintenanceStatus | null => {
+  if (!value) return null;
+
+  return {
+    enabled: Boolean(value.enabled),
+    message: String(value.message || '').trim(),
+    updatedAt: value.updatedAt ? String(value.updatedAt) : null,
+  };
+};
+
+const hasSameMaintenanceStatus = (
+  previous: MaintenanceStatus | null,
+  next: MaintenanceStatus | null
+) => {
+  return (
+    Boolean(previous?.enabled) === Boolean(next?.enabled) &&
+    String(previous?.message || '') === String(next?.message || '') &&
+    String(previous?.updatedAt || '') === String(next?.updatedAt || '')
+  );
+};
+
 const StudentRealtimeNotifier: React.FC<StudentRealtimeNotifierProps> = ({
   onTaskNotification,
-  onEvaluatorSubmissionNotification
+  onEvaluatorSubmissionNotification,
+  onMaintenanceStatusChange,
 }) => {
   const { user } = useAuth();
   const [permission, setPermission] = useState<NotificationPermissionState>(() => {
@@ -106,6 +130,7 @@ const StudentRealtimeNotifier: React.FC<StudentRealtimeNotifierProps> = ({
   const lastMaintenanceAtRef = useRef('');
   const taskNotificationRef = useRef(onTaskNotification);
   const evaluatorNotificationRef = useRef(onEvaluatorSubmissionNotification);
+  const maintenanceStatusRef = useRef(onMaintenanceStatusChange);
   const permissionRef = useRef<NotificationPermissionState>(permission);
 
   const activeRole = user?.role === 'student' || user?.role === 'evaluator'
@@ -120,6 +145,14 @@ const StudentRealtimeNotifier: React.FC<StudentRealtimeNotifierProps> = ({
     taskNotificationRef.current = onTaskNotification;
     evaluatorNotificationRef.current = onEvaluatorSubmissionNotification;
   }, [onTaskNotification, onEvaluatorSubmissionNotification]);
+
+  useEffect(() => {
+    maintenanceStatusRef.current = onMaintenanceStatusChange;
+  }, [onMaintenanceStatusChange]);
+
+  useEffect(() => {
+    maintenanceStatusRef.current?.(maintenanceStatus);
+  }, [maintenanceStatus]);
 
   const shouldShowPermissionPrompt = useMemo(() => {
     if (!activeRole) return false;
@@ -174,16 +207,21 @@ const StudentRealtimeNotifier: React.FC<StudentRealtimeNotifierProps> = ({
     let isCancelled = false;
     let timeoutId: number | null = null;
     let networkFailureCount = 0;
+    let isPolling = false;
 
     const scheduleNextPoll = (hadNetworkError: boolean) => {
       if (isCancelled) return;
+      const isHidden = document.visibilityState !== 'visible';
+      const baseDelay = isHidden ? HIDDEN_POLL_INTERVAL_MS : POLL_INTERVAL_MS;
       const nextDelay = hadNetworkError
-        ? Math.min(POLL_INTERVAL_MS * 2 ** networkFailureCount, 90000)
-        : POLL_INTERVAL_MS;
+        ? Math.min(baseDelay * 2 ** networkFailureCount, 180000)
+        : baseDelay;
       timeoutId = window.setTimeout(pollNotifications, nextDelay);
     };
 
     const pollNotifications = async () => {
+      if (isCancelled || isPolling) return;
+      isPolling = true;
       let hadNetworkError = false;
       try {
         const response = await api.get(
@@ -206,10 +244,12 @@ const StudentRealtimeNotifier: React.FC<StudentRealtimeNotifierProps> = ({
         if (isCancelled) return;
 
         const payload = response.data || {};
-        const currentMaintenance: MaintenanceStatus | null = payload.maintenanceStatus || null;
-        const maintenanceEvent: MaintenanceStatus | null = payload.maintenanceEvent || null;
+        const currentMaintenance = normalizeMaintenanceStatus(payload.maintenanceStatus);
+        const maintenanceEvent = normalizeMaintenanceStatus(payload.maintenanceEvent);
 
-        setMaintenanceStatus(currentMaintenance);
+        setMaintenanceStatus((previous) =>
+          hasSameMaintenanceStatus(previous, currentMaintenance) ? previous : currentMaintenance
+        );
 
         if (activeRole === 'student') {
           const newTasks = Array.isArray(payload.newTasks) ? payload.newTasks : [];
@@ -308,17 +348,45 @@ const StudentRealtimeNotifier: React.FC<StudentRealtimeNotifierProps> = ({
           networkFailureCount = 0;
         }
       } finally {
+        isPolling = false;
         scheduleNextPoll(hadNetworkError);
       }
     };
 
-    pollNotifications();
+    const runImmediatePoll = () => {
+      if (isCancelled) return;
+      if (timeoutId !== null) {
+        window.clearTimeout(timeoutId);
+        timeoutId = null;
+      }
+      void pollNotifications();
+    };
+
+    const handleVisibilityChange = () => {
+      if (document.visibilityState === 'visible') {
+        runImmediatePoll();
+      }
+    };
+    const handleFocus = () => {
+      runImmediatePoll();
+    };
+    const handleOnline = () => {
+      runImmediatePoll();
+    };
+
+    runImmediatePoll();
+    window.addEventListener('focus', handleFocus);
+    window.addEventListener('online', handleOnline);
+    document.addEventListener('visibilitychange', handleVisibilityChange);
 
     return () => {
       isCancelled = true;
       if (timeoutId !== null) {
         window.clearTimeout(timeoutId);
       }
+      window.removeEventListener('focus', handleFocus);
+      window.removeEventListener('online', handleOnline);
+      document.removeEventListener('visibilitychange', handleVisibilityChange);
     };
   }, [activeRole]);
 

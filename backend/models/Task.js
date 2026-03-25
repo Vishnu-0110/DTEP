@@ -28,4 +28,7 @@ const taskSchema = new mongoose.Schema(
   }
 );
 
+taskSchema.index({ createdAt: -1 });
+taskSchema.index({ createdBy: 1, createdAt: -1 });
+
 module.exports = mongoose.models.Task || mongoose.model('Task', taskSchema);

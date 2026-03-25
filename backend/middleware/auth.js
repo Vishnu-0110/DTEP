@@ -1,9 +1,8 @@
 
 const jwt = require('jsonwebtoken');
 const User = require('../models/User');
-const SystemSetting = require('../models/SystemSetting');
+const { getMaintenanceSettingCached } = require('../utils/maintenanceCache');
 
-const GLOBAL_KEY = 'global';
 const DEFAULT_MAINTENANCE_MESSAGE = 'The platform is currently under maintenance.';
 
 const isMaintenanceExemptRequest = (req) => {
@@ -40,9 +39,7 @@ const protect = async (req, res, next) => {
 
       const isAdmin = req.user.role === 'admin';
       if (!isAdmin && !isMaintenanceExemptRequest(req)) {
-        const setting = await SystemSetting.findOne({ key: GLOBAL_KEY })
-          .select('maintenanceMode maintenanceMessage updatedAt')
-          .lean();
+        const setting = await getMaintenanceSettingCached();
 
         if (setting?.maintenanceMode) {
           return res.status(503).json({

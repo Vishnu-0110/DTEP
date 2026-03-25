@@ -9,6 +9,8 @@ const DEFAULT_RETRY_DELAY_MS = 1200;
 const RETRYABLE_METHODS = new Set(['get', 'head', 'options']);
 const RETRY_COUNT_KEY = '__dtep_retry_count';
 const SKIP_RETRY_KEY = '__dtep_skip_retry';
+const AUTH_STORAGE_KEY = 'dtep_user';
+const AUTH_STATE_EVENT = 'dtep-auth-state-changed';
 const WARMUP_ATTEMPTS = 4;
 const WARMUP_DELAY_MS = 1200;
 const WARMUP_TIMEOUT_MS = 5000;
@@ -36,6 +38,35 @@ type RetryableRequestConfig = InternalAxiosRequestConfig & {
   [RETRY_COUNT_KEY]?: number;
   [SKIP_RETRY_KEY]?: boolean;
 };
+
+const readStoredAuthToken = () => {
+  if (typeof window === 'undefined') return null;
+
+  try {
+    const raw = localStorage.getItem(AUTH_STORAGE_KEY);
+    if (!raw) return null;
+    const parsed = JSON.parse(raw);
+    const token = String(parsed?.token || '').trim();
+    return token || null;
+  } catch (_) {
+    return null;
+  }
+};
+
+let cachedAuthToken: string | null = readStoredAuthToken();
+
+if (typeof window !== 'undefined') {
+  const syncCachedAuthToken = () => {
+    cachedAuthToken = readStoredAuthToken();
+  };
+
+  window.addEventListener('storage', (event) => {
+    if (!event.key || event.key === AUTH_STORAGE_KEY) {
+      syncCachedAuthToken();
+    }
+  });
+  window.addEventListener(AUTH_STATE_EVENT, syncCachedAuthToken);
+}
 
 const readNumberEnv = (key: string) =>
   Number((import.meta.env as Record<string, string | undefined>)[key] || '');
@@ -200,16 +231,14 @@ const api = axios.create({
 
 api.interceptors.request.use(
   (config) => {
-    const stored = localStorage.getItem('dtep_user');
-    if (stored) {
-      try {
-        const user = JSON.parse(stored);
-        if (user && user.token) {
-          config.headers.Authorization = `Bearer ${user.token}`;
-        }
-      } catch (e) {
-        localStorage.removeItem('dtep_user');
-      }
+    if (!cachedAuthToken) {
+      cachedAuthToken = readStoredAuthToken();
+    }
+
+    if (cachedAuthToken) {
+      config.headers.Authorization = `Bearer ${cachedAuthToken}`;
+    } else if (config.headers?.Authorization) {
+      delete config.headers.Authorization;
     }
     return config;
   },
@@ -241,7 +270,8 @@ api.interceptors.response.use(
     }
 
     if (error?.response?.status === 401) {
-      localStorage.removeItem('dtep_user');
+      cachedAuthToken = null;
+      localStorage.removeItem(AUTH_STORAGE_KEY);
       if (typeof window !== 'undefined' && window.location.hash !== '#/login') {
         window.location.hash = '#/login';
       }

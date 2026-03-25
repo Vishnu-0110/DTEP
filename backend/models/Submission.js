@@ -158,6 +158,10 @@ const submissionSchema = new Schema(
   }
 );
 
+submissionSchema.index({ submittedAt: -1 });
+submissionSchema.index({ taskId: 1, submittedAt: -1 });
+submissionSchema.index({ task: 1, submittedAt: -1 });
+
 submissionSchema.pre('validate', function syncLegacyRefs(next) {
   if (!this.task && this.taskId) {
     this.task = this.taskId;

@@ -1,9 +1,9 @@
 
-import React, { useEffect, useRef, useState } from 'react';
+import React, { useCallback, useEffect, useRef, useState } from 'react';
 import { Outlet, Link, useNavigate, useLocation } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { useTheme, ThemeType } from '../context/ThemeContext';
-import api from '../services/api';
+import api, { SKIP_RETRY_KEY } from '../services/api';
 import { useBodyScrollLock } from '../utils/useBodyScrollLock';
 import { saveLastRouteForUser } from '../utils/navigationPersistence';
 import StudentRealtimeNotifier, {
@@ -34,12 +34,33 @@ const STUDENT_TASK_NOTIFICATION_KEY = 'dtep_student_task_notifications';
 const STUDENT_TASK_NOTIFICATION_LIMIT = 50;
 const EVALUATOR_SUBMISSION_NOTIFICATION_KEY = 'dtep_evaluator_submission_notifications';
 const EVALUATOR_SUBMISSION_NOTIFICATION_LIMIT = 50;
-const MAINTENANCE_POLL_INTERVAL_MS = 15000;
+const MAINTENANCE_GATE_POLL_INTERVAL_MS = 30000;
+const MAINTENANCE_GATE_HIDDEN_POLL_INTERVAL_MS = 90000;
 
 type MaintenanceStatus = {
   enabled: boolean;
   message: string;
   updatedAt?: string | null;
+};
+
+const normalizeMaintenanceStatus = (value: any): MaintenanceStatus | null => {
+  if (!value) return null;
+  return {
+    enabled: Boolean(value.enabled),
+    message: String(value.message || '').trim(),
+    updatedAt: value.updatedAt ? String(value.updatedAt) : null,
+  };
+};
+
+const hasSameMaintenanceStatus = (
+  previous: MaintenanceStatus | null,
+  next: MaintenanceStatus | null
+) => {
+  return (
+    Boolean(previous?.enabled) === Boolean(next?.enabled) &&
+    String(previous?.message || '') === String(next?.message || '') &&
+    String(previous?.updatedAt || '') === String(next?.updatedAt || '')
+  );
 };
 
 const formatNotificationDue = (deadline: string | null) => {
@@ -83,7 +104,9 @@ const Layout: React.FC = () => {
       if (!raw) return [];
       const parsed = JSON.parse(raw);
       if (!Array.isArray(parsed)) return [];
-      return parsed.filter(Boolean).slice(0, STUDENT_TASK_NOTIFICATION_LIMIT);
+      return parsed
+        .filter((item) => item && item.read !== true)
+        .slice(0, STUDENT_TASK_NOTIFICATION_LIMIT);
     } catch (_) {
       return [];
     }
@@ -95,7 +118,9 @@ const Layout: React.FC = () => {
       if (!raw) return [];
       const parsed = JSON.parse(raw);
       if (!Array.isArray(parsed)) return [];
-      return parsed.filter(Boolean).slice(0, EVALUATOR_SUBMISSION_NOTIFICATION_LIMIT);
+      return parsed
+        .filter((item) => item && item.read !== true)
+        .slice(0, EVALUATOR_SUBMISSION_NOTIFICATION_LIMIT);
     } catch (_) {
       return [];
     }
@@ -156,30 +181,42 @@ const Layout: React.FC = () => {
   };
 
   const handleStudentNotificationClick = (notification: StudentTaskNotificationItem) => {
-    setStudentTaskNotifications((prev) =>
-      prev.map((item) => (item.id === notification.id ? { ...item, read: true } : item))
-    );
+    setStudentTaskNotifications((prev) => prev.filter((item) => item.id !== notification.id));
     setIsNotificationMenuOpen(false);
     navigate(`/task/${notification.taskId}`);
   };
 
   const handleEvaluatorNotificationClick = (notification: EvaluatorSubmissionNotificationItem) => {
-    setEvaluatorSubmissionNotifications((prev) =>
-      prev.map((item) => (item.id === notification.id ? { ...item, read: true } : item))
-    );
+    setEvaluatorSubmissionNotifications((prev) => prev.filter((item) => item.id !== notification.id));
     setIsNotificationMenuOpen(false);
     navigate(`/evaluator/submissions/${notification.taskId}`, {
       state: { activeSubmissionId: notification.submissionId }
     });
   };
 
+  const markStudentNotificationAsRead = (notificationId: string) => {
+    setStudentTaskNotifications((prev) => prev.filter((item) => item.id !== notificationId));
+  };
+
+  const markEvaluatorNotificationAsRead = (notificationId: string) => {
+    setEvaluatorSubmissionNotifications((prev) => prev.filter((item) => item.id !== notificationId));
+  };
+
   const markAllStudentNotificationsRead = () => {
-    setStudentTaskNotifications((prev) => prev.map((item) => ({ ...item, read: true })));
+    setStudentTaskNotifications([]);
   };
 
   const markAllEvaluatorNotificationsRead = () => {
-    setEvaluatorSubmissionNotifications((prev) => prev.map((item) => ({ ...item, read: true })));
+    setEvaluatorSubmissionNotifications([]);
   };
+
+  const handleMaintenanceStatusChange = useCallback((status: MaintenanceStatus | null) => {
+    if (!shouldEnforceMaintenance) return;
+
+    setMaintenanceStatus((previous) => (
+      hasSameMaintenanceStatus(previous, status) ? previous : status
+    ));
+  }, [shouldEnforceMaintenance]);
 
   useEffect(() => {
     setIsThemeMenuOpen(false);
@@ -245,64 +282,124 @@ const Layout: React.FC = () => {
     }
 
     let isCancelled = false;
-    let timeoutId: number | null = null;
-    let networkFailureCount = 0;
-
-    const scheduleNextPoll = (hadNetworkError: boolean) => {
-      if (isCancelled) return;
-      const nextDelay = hadNetworkError
-        ? Math.min(MAINTENANCE_POLL_INTERVAL_MS * 2 ** networkFailureCount, 60000)
-        : MAINTENANCE_POLL_INTERVAL_MS;
-      timeoutId = window.setTimeout(fetchMaintenanceStatus, nextDelay);
-    };
 
     const fetchMaintenanceStatus = async () => {
-      let hadNetworkError = false;
       try {
-        const response = await api.get('/system/maintenance');
-        if (isCancelled) return;
-        networkFailureCount = 0;
-        setMaintenanceStatus({
-          enabled: Boolean(response.data?.enabled),
-          message: String(response.data?.message || '').trim(),
-          updatedAt: response.data?.updatedAt || null,
+        const response = await api.get('/system/maintenance', {
+          [SKIP_RETRY_KEY]: true,
         });
+        if (isCancelled) return;
+
+        const nextStatus = normalizeMaintenanceStatus(response.data);
+        setMaintenanceStatus((previous) => (
+          hasSameMaintenanceStatus(previous, nextStatus) ? previous : nextStatus
+        ));
       } catch (error: any) {
         if (isCancelled) return;
 
         if (error?.response?.status === 503 && error?.response?.data?.maintenance) {
-          networkFailureCount = 0;
-          const maintenance = error.response.data.maintenance;
-          setMaintenanceStatus({
-            enabled: Boolean(maintenance.enabled),
-            message: String(maintenance.message || '').trim(),
-            updatedAt: maintenance.updatedAt || null,
-          });
-        } else {
-          hadNetworkError = !error?.response;
-          if (hadNetworkError) {
-            networkFailureCount = Math.min(networkFailureCount + 1, 4);
-          } else {
-            networkFailureCount = 0;
-          }
-          setMaintenanceStatus(null);
-        }
-      } finally {
-        if (!isCancelled) {
-          scheduleNextPoll(hadNetworkError);
+          const nextStatus = normalizeMaintenanceStatus(error.response.data.maintenance);
+          setMaintenanceStatus((previous) => (
+            hasSameMaintenanceStatus(previous, nextStatus) ? previous : nextStatus
+          ));
         }
       }
     };
 
-    fetchMaintenanceStatus();
+    void fetchMaintenanceStatus();
+
+    return () => {
+      isCancelled = true;
+    };
+  }, [shouldEnforceMaintenance]);
+
+  useEffect(() => {
+    if (!shouldEnforceMaintenance || !maintenanceStatus?.enabled) return;
+
+    let isCancelled = false;
+    let timeoutId: number | null = null;
+    let networkFailureCount = 0;
+    let isPolling = false;
+
+    const scheduleNextPoll = (hadNetworkError: boolean) => {
+      if (isCancelled) return;
+      const isHidden = document.visibilityState !== 'visible';
+      const baseDelay = isHidden
+        ? MAINTENANCE_GATE_HIDDEN_POLL_INTERVAL_MS
+        : MAINTENANCE_GATE_POLL_INTERVAL_MS;
+      const nextDelay = hadNetworkError
+        ? Math.min(baseDelay * 2 ** networkFailureCount, 180000)
+        : baseDelay;
+      timeoutId = window.setTimeout(pollMaintenanceStatus, nextDelay);
+    };
+
+    const pollMaintenanceStatus = async () => {
+      if (isCancelled || isPolling) return;
+      isPolling = true;
+      let hadNetworkError = false;
+
+      try {
+        const response = await api.get('/system/maintenance', {
+          [SKIP_RETRY_KEY]: true,
+        });
+        if (isCancelled) return;
+
+        networkFailureCount = 0;
+        const nextStatus = normalizeMaintenanceStatus(response.data);
+        setMaintenanceStatus((previous) => (
+          hasSameMaintenanceStatus(previous, nextStatus) ? previous : nextStatus
+        ));
+      } catch (error: any) {
+        if (isCancelled) return;
+
+        hadNetworkError = !error?.response;
+        if (hadNetworkError) {
+          networkFailureCount = Math.min(networkFailureCount + 1, 4);
+        } else {
+          networkFailureCount = 0;
+        }
+      } finally {
+        isPolling = false;
+        scheduleNextPoll(hadNetworkError);
+      }
+    };
+
+    const triggerImmediatePoll = () => {
+      if (isCancelled) return;
+      if (timeoutId !== null) {
+        window.clearTimeout(timeoutId);
+        timeoutId = null;
+      }
+      void pollMaintenanceStatus();
+    };
+
+    const handleVisibilityChange = () => {
+      if (document.visibilityState === 'visible') {
+        triggerImmediatePoll();
+      }
+    };
+    const handleFocus = () => {
+      triggerImmediatePoll();
+    };
+    const handleOnline = () => {
+      triggerImmediatePoll();
+    };
+
+    triggerImmediatePoll();
+    window.addEventListener('focus', handleFocus);
+    window.addEventListener('online', handleOnline);
+    document.addEventListener('visibilitychange', handleVisibilityChange);
 
     return () => {
       isCancelled = true;
       if (timeoutId !== null) {
         window.clearTimeout(timeoutId);
       }
+      window.removeEventListener('focus', handleFocus);
+      window.removeEventListener('online', handleOnline);
+      document.removeEventListener('visibilitychange', handleVisibilityChange);
     };
-  }, [shouldEnforceMaintenance]);
+  }, [shouldEnforceMaintenance, maintenanceStatus?.enabled]);
 
   const navItems = [
     { label: 'Dashboard', path: '/dashboard', icon: <LayoutDashboard size={20} />, roles: ['admin', 'evaluator', 'student'] },
@@ -523,40 +620,64 @@ const Layout: React.FC = () => {
                         <div className="max-h-72 overflow-y-auto custom-scrollbar space-y-1 pr-1">
                           {isStudent
                             ? studentTaskNotifications.map((notification) => (
-                                <button
+                                <div
                                   key={notification.id}
-                                  onClick={() => handleStudentNotificationClick(notification)}
-                                  className={`w-full text-left p-3 rounded-xl border transition-all ${
-                                    notification.read
-                                      ? 'border-white/10 bg-adaptive-nested hover:bg-black/5 dark:hover:bg-white/5'
-                                      : 'border-blue-500/20 bg-blue-500/10 hover:bg-blue-500/20'
-                                  }`}
+                                  className="w-full p-3 rounded-xl border transition-all border-blue-500/20 bg-blue-500/10 hover:bg-blue-500/20"
                                 >
-                                  <p className="text-[11px] font-black text-adaptive-main tracking-tight line-clamp-1">
-                                    {notification.title}
-                                  </p>
-                                  <p className="text-[9px] font-bold text-adaptive-sub uppercase tracking-widest mt-1">
-                                    {formatNotificationDue(notification.deadline)}
-                                  </p>
-                                </button>
+                                  <div className="flex items-start gap-3">
+                                    <button
+                                      type="button"
+                                      onClick={() => handleStudentNotificationClick(notification)}
+                                      className="flex-1 text-left"
+                                    >
+                                      <p className="text-[11px] font-black text-adaptive-main tracking-tight line-clamp-1">
+                                        {notification.title}
+                                      </p>
+                                      <p className="text-[9px] font-bold text-adaptive-sub uppercase tracking-widest mt-1">
+                                        {formatNotificationDue(notification.deadline)}
+                                      </p>
+                                    </button>
+                                    <label className="flex items-center gap-1.5 text-[8px] font-black uppercase tracking-widest text-adaptive-sub pt-0.5">
+                                      <input
+                                        type="checkbox"
+                                        className="h-3.5 w-3.5 rounded border-white/30 bg-transparent accent-blue-500"
+                                        aria-label="Mark notification as read"
+                                        onChange={() => markStudentNotificationAsRead(notification.id)}
+                                      />
+                                      Read
+                                    </label>
+                                  </div>
+                                </div>
                               ))
                             : evaluatorSubmissionNotifications.map((notification) => (
-                                <button
+                                <div
                                   key={notification.id}
-                                  onClick={() => handleEvaluatorNotificationClick(notification)}
-                                  className={`w-full text-left p-3 rounded-xl border transition-all ${
-                                    notification.read
-                                      ? 'border-white/10 bg-adaptive-nested hover:bg-black/5 dark:hover:bg-white/5'
-                                      : 'border-blue-500/20 bg-blue-500/10 hover:bg-blue-500/20'
-                                  }`}
+                                  className="w-full p-3 rounded-xl border transition-all border-blue-500/20 bg-blue-500/10 hover:bg-blue-500/20"
                                 >
-                                  <p className="text-[11px] font-black text-adaptive-main tracking-tight line-clamp-1">
-                                    {notification.studentName} submitted assignment
-                                  </p>
-                                  <p className="text-[9px] font-bold text-adaptive-sub uppercase tracking-widest mt-1 line-clamp-2">
-                                    {formatSubmissionNotificationMeta(notification.taskTitle, notification.submittedAt)}
-                                  </p>
-                                </button>
+                                  <div className="flex items-start gap-3">
+                                    <button
+                                      type="button"
+                                      onClick={() => handleEvaluatorNotificationClick(notification)}
+                                      className="flex-1 text-left"
+                                    >
+                                      <p className="text-[11px] font-black text-adaptive-main tracking-tight line-clamp-1">
+                                        {notification.studentName} submitted assignment
+                                      </p>
+                                      <p className="text-[9px] font-bold text-adaptive-sub uppercase tracking-widest mt-1 line-clamp-2">
+                                        {formatSubmissionNotificationMeta(notification.taskTitle, notification.submittedAt)}
+                                      </p>
+                                    </button>
+                                    <label className="flex items-center gap-1.5 text-[8px] font-black uppercase tracking-widest text-adaptive-sub pt-0.5">
+                                      <input
+                                        type="checkbox"
+                                        className="h-3.5 w-3.5 rounded border-white/30 bg-transparent accent-blue-500"
+                                        aria-label="Mark notification as read"
+                                        onChange={() => markEvaluatorNotificationAsRead(notification.id)}
+                                      />
+                                      Read
+                                    </label>
+                                  </div>
+                                </div>
                               ))}
                         </div>
                       )}
@@ -634,6 +755,7 @@ const Layout: React.FC = () => {
             <StudentRealtimeNotifier
               onTaskNotification={handleStudentTaskNotification}
               onEvaluatorSubmissionNotification={handleEvaluatorSubmissionNotification}
+              onMaintenanceStatusChange={handleMaintenanceStatusChange}
             />
             <Outlet />
           </div>
