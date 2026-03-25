@@ -4,7 +4,7 @@
   "version": "0.0.0",
   "type": "module",
   "scripts": {
-    "dev": "node scripts/dev-all.mjs",
+    "dev": "node scripts/kill-stale-dev.mjs && node scripts/dev-all.mjs",
     "frontend:dev": "vite --host 0.0.0.0",
     "build": "vite build",
     "preview": "vite preview --host 0.0.0.0",
