@@ -439,7 +439,7 @@ const StudentTasks: React.FC = () => {
           </div>
 
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 lg:gap-8 items-start">
-            <div className="bg-adaptive-nested/50 border border-white/10 rounded-3xl p-5 space-y-3">
+            <div className="bg-adaptive-nested/50 border border-white/10 rounded-3xl p-5 space-y-3 max-h-[45dvh] lg:max-h-[58vh] overflow-y-auto custom-scrollbar pr-1">
               <p className="text-[9px] font-black text-adaptive-sub uppercase tracking-widest">AI Rubric Guidance</p>
               {selectedTask?.rubricText ? (
                 <p className="text-xs text-adaptive-main font-bold leading-relaxed whitespace-pre-line break-words">
