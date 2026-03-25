@@ -7,7 +7,8 @@ const {
   getSubmissionsByTask, 
   getStudentSubmissions,
   generateAiAssist,
-  viewSubmissionFile
+  viewSubmissionFile,
+  reopenSubmission,
 } = require('../controllers/submissionController');
 const { protect, authorize } = require('../middleware/auth');
 const upload = require('../middleware/upload');
@@ -18,5 +19,6 @@ router.get('/my-submissions', protect, authorize('student'), getStudentSubmissio
 router.get('/:id/view', protect, viewSubmissionFile);
 router.post('/:id/ai-assist', protect, authorize('evaluator', 'admin'), generateAiAssist);
 router.put('/:id/evaluate', protect, authorize('evaluator'), evaluateSubmission);
+router.put('/:id/reopen', protect, authorize('evaluator', 'admin'), reopenSubmission);
 
 module.exports = router;

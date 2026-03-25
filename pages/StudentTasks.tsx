@@ -38,8 +38,9 @@ const formatCountdown = (deadlineMs: number, nowMs: number) => {
   return `${String(hours).padStart(2, '0')}:${String(minutes).padStart(2, '0')}:${String(seconds).padStart(2, '0')}`;
 };
 
-const getDisplayStatus = (task: any, nowMs: number): 'assigned' | 'pending' | 'evaluated' | 'overdue' | 'missed' => {
+const getDisplayStatus = (task: any, nowMs: number): 'assigned' | 'reopened' | 'pending' | 'evaluated' | 'overdue' | 'missed' => {
   if (task.isAutoZero) return 'missed';
+  if (task.hasSubmission && task.allowResubmission) return 'reopened';
   if (task.hasSubmission && task.reviewStatus === 'evaluated') return 'evaluated';
   if (task.hasSubmission) return 'pending';
   const deadlineMs = new Date(task.deadline).getTime();
@@ -58,6 +59,14 @@ const REQUIRED_SECTION_HEADINGS = [
   'Conclusion (10)',
   'References (10)',
 ];
+const FEEDBACK_PREVIEW_MAX_CHARS = 220;
+
+const toFeedbackPreview = (value: string, maxChars = FEEDBACK_PREVIEW_MAX_CHARS) => {
+  const normalized = String(value || '').replace(/\s+/g, ' ').trim();
+  if (!normalized) return '';
+  if (normalized.length <= maxChars) return normalized;
+  return `${normalized.slice(0, maxChars).trimEnd()}...`;
+};
 
 const StudentTasks: React.FC = () => {
   const [tasks, setTasks] = useState<any[]>([]);
@@ -117,6 +126,10 @@ const StudentTasks: React.FC = () => {
           feedback: submission?.feedback || submission?.remarks || '',
           submittedAt: submission?.submittedAt || null,
           isAutoZero: Boolean(submission?.isAutoZero),
+          allowResubmission: Boolean(submission?.allowResubmission),
+          reopenReason: String(submission?.reopenReason || '').trim(),
+          reopenedAt: submission?.reopenedAt || null,
+          resubmissionCount: Number(submission?.resubmissionCount || 0),
         };
       });
 
@@ -160,9 +173,10 @@ const StudentTasks: React.FC = () => {
     const uploadedFileName = selectedFile.name;
 
     try {
-      await api.post(`/submissions/${selectedTask._id}/submit`, formData, {
+      const response = await api.post(`/submissions/${selectedTask._id}/submit`, formData, {
         headers: { 'Content-Type': 'multipart/form-data' }
       });
+      const serverSubmission = response?.data?.submission || response?.data || {};
       
       setTasks(prev =>
         prev.map(t =>
@@ -170,14 +184,21 @@ const StudentTasks: React.FC = () => {
             ? {
                 ...t,
                 hasSubmission: true,
-                reviewStatus: 'pending',
-                submittedAt: new Date().toISOString(),
+                reviewStatus: serverSubmission.status || 'pending',
+                submittedAt: serverSubmission.submittedAt || new Date().toISOString(),
                 isAutoZero: false,
+                marks: typeof serverSubmission.marks === 'number' ? serverSubmission.marks : null,
+                feedback: serverSubmission.feedback || serverSubmission.remarks || '',
+                allowResubmission: Boolean(serverSubmission.allowResubmission),
+                reopenReason: String(serverSubmission.reopenReason || ''),
+                reopenedAt: serverSubmission.reopenedAt || null,
+                resubmissionCount: Number(serverSubmission.resubmissionCount || t.resubmissionCount || 0),
               }
             : t
         )
       );
-      setSuccessMessage(`File uploaded successfully: ${uploadedFileName}`);
+      const successNotice = String(response?.data?.message || '').trim();
+      setSuccessMessage(successNotice || `File uploaded successfully: ${uploadedFileName}`);
       setTimeout(() => setSuccessMessage(''), 4000);
       
       setTimeout(() => {
@@ -200,6 +221,10 @@ const StudentTasks: React.FC = () => {
                   feedback: existingSubmission.feedback,
                   submittedAt: existingSubmission.submittedAt || t.submittedAt,
                   isAutoZero: Boolean(existingSubmission.isAutoZero),
+                  allowResubmission: Boolean(existingSubmission.allowResubmission),
+                  reopenReason: String(existingSubmission.reopenReason || ''),
+                  reopenedAt: existingSubmission.reopenedAt || null,
+                  resubmissionCount: Number(existingSubmission.resubmissionCount || t.resubmissionCount || 0),
                 }
               : t
           )
@@ -272,6 +297,7 @@ const StudentTasks: React.FC = () => {
                 <div className={`px-2.5 py-1 rounded-lg text-[9px] font-black uppercase tracking-widest border transition-colors duration-300 ${
                   displayStatus === 'evaluated' ? 'bg-emerald-500/10 text-emerald-500 border-emerald-500/10' :
                   displayStatus === 'missed' ? 'bg-rose-500/10 text-rose-500 border-rose-500/10' :
+                  displayStatus === 'reopened' ? 'bg-indigo-500/10 text-indigo-400 border-indigo-500/20' :
                   displayStatus === 'pending' ? 'bg-amber-500/10 text-amber-500 border-amber-500/10' :
                   displayStatus === 'overdue' ? 'bg-rose-500/10 text-rose-500 border-rose-500/10' : 'bg-blue-500/10 text-blue-500 border-blue-500/10'
                 }`}>
@@ -284,7 +310,9 @@ const StudentTasks: React.FC = () => {
                 )}
               </div>
 
-              <h3 className="text-xl font-black text-adaptive-main mb-2 tracking-tight group-hover:theme-text-primary transition-colors line-clamp-1">{task.title}</h3>
+              <h3 className="text-xl font-black text-adaptive-main mb-2 tracking-tight group-hover:theme-text-primary transition-colors break-words leading-snug">
+                {task.title}
+              </h3>
               <p className="text-[11px] text-adaptive-sub mb-8 font-bold flex items-center gap-1.5 opacity-80 italic">
                  By {task.teacher || 'Evaluator'}
               </p>
@@ -307,13 +335,13 @@ const StudentTasks: React.FC = () => {
                   </div>
                 </div>
 
-                {displayStatus === 'assigned' ? (
+                {displayStatus === 'assigned' || displayStatus === 'reopened' ? (
                   <button 
                     onClick={() => { setSelectedTask(task); setAnswerText(''); setIsUploadModalOpen(true); }}
                     className="w-full theme-bg-primary hover:opacity-95 text-white font-black py-4 rounded-2xl flex items-center justify-center gap-2 transition-all shadow-xl theme-shadow-primary active:scale-95 text-[9px] uppercase tracking-widest"
                   >
                     <Upload size={18} />
-                    Upload Document
+                    {displayStatus === 'reopened' ? 'Re-upload Document' : 'Upload Document'}
                   </button>
                 ) : displayStatus === 'pending' ? (
                   <div className="p-4 bg-amber-500/5 rounded-2xl border border-amber-500/10">
@@ -331,8 +359,8 @@ const StudentTasks: React.FC = () => {
                       <span className="text-[9px] font-black uppercase tracking-widest text-rose-500">Missed</span>
                       <span className="text-lg font-black text-rose-500">0%</span>
                     </div>
-                    <p className="text-[10px] text-adaptive-sub font-medium italic opacity-80 whitespace-pre-line break-words">
-                      {task.feedback || 'Deadline missed. The system automatically assigned 0 marks.'}
+                    <p className="text-[10px] text-adaptive-sub font-medium italic opacity-80 break-words leading-relaxed line-clamp-3">
+                      {toFeedbackPreview(task.feedback || 'Deadline missed. The system automatically assigned 0 marks.')}
                     </p>
                   </div>
                 ) : displayStatus === 'evaluated' ? (
@@ -341,13 +369,24 @@ const StudentTasks: React.FC = () => {
                       <span className={`text-[9px] font-black uppercase tracking-widest ${scoreTone.labelTextClass}`}>Marked</span>
                       <span className={`text-lg font-black ${scoreTone.valueTextClass}`}>{typeof task.marks === 'number' ? task.marks : '--'}%</span>
                     </div>
-                    <p className="text-[10px] text-adaptive-sub font-medium italic opacity-70 whitespace-pre-line break-words">
-                        {task.feedback || 'System audit in progress...'}
+                    <p className="text-[10px] text-adaptive-sub font-medium italic opacity-70 break-words leading-relaxed line-clamp-3">
+                        {toFeedbackPreview(task.feedback || 'System audit in progress...')}
                     </p>
                   </div>
                 ) : (
                   <div className="w-full bg-adaptive-nested text-adaptive-sub font-black py-4 rounded-2xl text-center text-[9px] uppercase tracking-widest opacity-40 italic">
                     Deadline Passed
+                  </div>
+                )}
+
+                {displayStatus === 'reopened' && (
+                  <div className="p-3 rounded-2xl border border-indigo-500/20 bg-indigo-500/10">
+                    <p className="text-[9px] font-black uppercase tracking-widest text-indigo-300">
+                      Resubmission Window Open
+                    </p>
+                    <p className="mt-1 text-[10px] text-adaptive-sub font-medium leading-relaxed whitespace-pre-line break-words">
+                      {task.reopenReason || 'Evaluator requested a corrected file upload for this submission.'}
+                    </p>
                   </div>
                 )}
               </div>

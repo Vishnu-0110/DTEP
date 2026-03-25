@@ -152,6 +152,30 @@ const submissionSchema = new Schema(
       default: false,
       index: true,
     },
+    allowResubmission: {
+      type: Boolean,
+      default: false,
+      index: true,
+    },
+    reopenReason: {
+      type: String,
+      default: '',
+      trim: true,
+    },
+    reopenedAt: {
+      type: Date,
+      default: null,
+    },
+    reopenedBy: {
+      type: Schema.Types.ObjectId,
+      ref: 'User',
+      default: null,
+    },
+    resubmissionCount: {
+      type: Number,
+      default: 0,
+      min: 0,
+    },
   },
   {
     timestamps: true,

@@ -29,6 +29,7 @@ const Submissions: React.FC = () => {
   const [activeSubmission, setActiveSubmission] = useState<any>(null);
   const [isAILoading, setIsAILoading] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [isReopening, setIsReopening] = useState(false);
   const [isViewing, setIsViewing] = useState(false);
   const [marks, setMarks] = useState<number>(0);
   const [marksInput, setMarksInput] = useState('0');
@@ -36,6 +37,7 @@ const Submissions: React.FC = () => {
   const [aiAnalysis, setAiAnalysis] = useState<{strengths: string[], weaknesses: string[], improvements: string[]} | null>(null);
   const [aiError, setAiError] = useState('');
   const [pendingSelectionId, setPendingSelectionId] = useState('');
+  const [reopenReasonInput, setReopenReasonInput] = useState('');
 
   const locationState = location.state as { activeSubmissionId?: string } | null;
 
@@ -198,8 +200,36 @@ const Submissions: React.FC = () => {
       setMarksInput(String(normalizedInitialMarks));
       setFeedback(initialFeedback);
       setAiAnalysis(activeSubmission.aiReport || null);
+      setReopenReasonInput(String(activeSubmission.reopenReason || '').trim());
     }
   }, [activeSubmission]);
+
+  const handleReopenSubmission = async () => {
+    if (!activeSubmission?._id || isMissedSubmission || isReopening) return;
+
+    setIsReopening(true);
+    try {
+      const response = await api.put(`/submissions/${activeSubmission._id}/reopen`, {
+        reason: String(reopenReasonInput || '').trim(),
+      });
+      const updatedSubmission = response.data?.submission || {};
+
+      setSubmissions((prev) =>
+        prev.map((sub) =>
+          sub._id === activeSubmission._id
+            ? { ...sub, ...updatedSubmission }
+            : sub
+        )
+      );
+      setActiveSubmission((prev) => (prev ? { ...prev, ...updatedSubmission } : prev));
+      setReopenReasonInput(String(updatedSubmission.reopenReason || reopenReasonInput || '').trim());
+      alert(response.data?.message || 'Resubmission window opened for this student.');
+    } catch (err: any) {
+      alert(err.response?.data?.message || 'Failed to reopen submission.');
+    } finally {
+      setIsReopening(false);
+    }
+  };
 
   const handleCompleteEvaluation = async () => {
     if (!activeSubmission || activeSubmission.status === 'evaluated') return;
@@ -445,12 +475,14 @@ const Submissions: React.FC = () => {
                       </div>
                     )}
                     <div className={`px-3 py-1.5 rounded-xl text-[8px] font-black uppercase tracking-widest flex items-center gap-2 border transition-colors ${
-                      sub.isAutoZero
+                      sub.allowResubmission
+                        ? 'bg-indigo-500/10 text-indigo-300 border-indigo-500/20'
+                        : sub.isAutoZero
                         ? 'bg-rose-500/10 text-rose-400 border-rose-500/10'
                         : (sub.status === 'evaluated' ? 'bg-emerald-500/10 text-emerald-400 border-emerald-500/10' : 'bg-blue-500/10 text-blue-400 border-blue-500/10')
                     }`}>
                       {sub.status === 'evaluated' || sub.isAutoZero ? <CheckCircle size={10} /> : <div className="w-1.5 h-1.5 rounded-full theme-bg-primary animate-pulse"></div>}
-                      {sub.isAutoZero ? 'missed' : sub.status}
+                      {sub.allowResubmission ? 'reopened' : (sub.isAutoZero ? 'missed' : sub.status)}
                     </div>
                     <ArrowRight size={18} className={`text-slate-700 transition-all hidden sm:block ${activeSubmission?._id === sub._id ? 'translate-x-1 theme-text-primary' : 'group-hover:translate-x-1 group-hover:text-slate-400'}`} />
                   </div>
@@ -505,6 +537,42 @@ const Submissions: React.FC = () => {
                     {isMissedSubmission ? 'No File' : (isViewing ? 'Opening' : 'View')}
                   </div>
                 </button>
+
+                <div className="space-y-2">
+                  <label className="text-[9px] font-black text-adaptive-sub uppercase tracking-widest">
+                    Reopen Note (Optional)
+                  </label>
+                  <textarea
+                    rows={3}
+                    value={reopenReasonInput}
+                    onChange={(e) => setReopenReasonInput(e.target.value)}
+                    disabled={isReopening || isMissedSubmission}
+                    placeholder="Reason for asking re-upload (e.g., wrong file uploaded)."
+                    className={`w-full bg-adaptive-nested border border-white/10 rounded-2xl py-3 px-4 text-xs text-adaptive-main focus:outline-none focus:theme-border-primary transition-all resize-none ${isMissedSubmission ? 'opacity-60 cursor-not-allowed' : ''}`}
+                  />
+                  <button
+                    type="button"
+                    onClick={handleReopenSubmission}
+                    disabled={isReopening || isMissedSubmission}
+                    className={`w-full rounded-2xl border border-indigo-500/30 bg-indigo-500/10 px-4 py-3 text-[10px] font-black uppercase tracking-widest text-indigo-300 transition-all ${isReopening || isMissedSubmission ? 'opacity-60 cursor-not-allowed' : 'hover:bg-indigo-500/20 active:scale-95'}`}
+                  >
+                    {isReopening
+                      ? 'Opening...'
+                      : (activeSubmission.allowResubmission ? 'Update Reopen Window' : 'Reopen for Resubmission')}
+                  </button>
+                </div>
+
+                {activeSubmission.allowResubmission && (
+                  <div className="bg-indigo-500/10 border border-indigo-500/20 p-3 rounded-xl text-indigo-200 text-[10px] font-bold space-y-1">
+                    <p className="uppercase tracking-widest">Resubmission Open</p>
+                    {activeSubmission.reopenedAt ? (
+                      <p>Opened: {new Date(activeSubmission.reopenedAt).toLocaleString()}</p>
+                    ) : null}
+                    <p className="leading-relaxed">
+                      {activeSubmission.reopenReason || 'Student can upload a corrected file now.'}
+                    </p>
+                  </div>
+                )}
 
                 <div className="space-y-3">
                   <div className="flex items-center justify-between px-1">

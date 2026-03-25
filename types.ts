@@ -43,6 +43,11 @@ export interface Submission {
   aiEvaluatedAt?: string | null;
   aiModel?: string | null;
   isAutoZero?: boolean;
+  allowResubmission?: boolean;
+  reopenReason?: string;
+  reopenedAt?: string | null;
+  reopenedBy?: string | null;
+  resubmissionCount?: number;
   status: 'pending' | 'evaluated';
   aiReport?: {
     strengths: string[];

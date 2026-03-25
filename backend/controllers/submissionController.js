@@ -227,6 +227,11 @@ const toClientSubmission = (submissionDoc) => {
     aiModel: item.aiModel || null,
     evaluationDetails: item.evaluationDetails || null,
     isAutoZero: Boolean(item.isAutoZero),
+    allowResubmission: Boolean(item.allowResubmission),
+    reopenReason: item.reopenReason || '',
+    reopenedAt: item.reopenedAt || null,
+    reopenedBy: item.reopenedBy || null,
+    resubmissionCount: Number(item.resubmissionCount || 0),
 
     // Legacy keys currently used by the frontend.
     student: user,
@@ -365,22 +370,100 @@ exports.submitTask = async (req, res) => {
       ]
     }).sort('-submittedAt');
 
-    if (new Date(task.deadline).getTime() < Date.now()) {
-      await syncMissedSubmissions({ taskIds: [taskId], studentId: req.user._id });
-      const missedSubmission = await findExistingSubmission();
-      cleanupUploadedFile(req.file?.path);
-
-      return res.status(409).json({
-        message: 'Deadline has passed. This assignment was auto-marked 0 for non-submission.',
-        submission: missedSubmission ? toClientSubmission(missedSubmission) : null,
-      });
-    }
-
     const answerText = String(req.body.answer || req.body.answerText || '').trim();
     const normalizedPath = String(req.file.filename || '').trim();
     const isPdfUpload = String(req.file.originalname || '').toLowerCase().endsWith('.pdf');
 
     let submission = await findExistingSubmission();
+    const canReplaceExistingSubmission = Boolean(submission?.allowResubmission);
+    const isDeadlinePassed = new Date(task.deadline).getTime() < Date.now();
+
+    if (isDeadlinePassed && !canReplaceExistingSubmission) {
+      await syncMissedSubmissions({ taskIds: [taskId], studentId: req.user._id });
+      const existingSubmission = submission || await findExistingSubmission();
+      cleanupUploadedFile(req.file?.path);
+
+      if (existingSubmission) {
+        return res.status(409).json({
+          message: `Task already submitted. Current status is ${existingSubmission.status || 'pending'}.`,
+          submission: toClientSubmission(existingSubmission),
+        });
+      }
+
+      return res.status(409).json({
+        message: 'Deadline has passed. This assignment was auto-marked 0 for non-submission.',
+        submission: null,
+      });
+    }
+
+    if (submission && canReplaceExistingSubmission) {
+      const previousFilePath = normalizeStoredSubmissionPath(submission);
+      const previousWasAutoZero = isMissedSubmission(submission);
+      const reopenedAt = submission.reopenedAt || null;
+      const reopenedBy = submission.reopenedBy || null;
+      const reopenReason = String(submission.reopenReason || '').trim();
+
+      submission.submissionFile = normalizedPath;
+      submission.fileUrl = normalizedPath;
+      submission.fileName = req.file.originalname;
+      submission.answer = answerText;
+      submission.submittedAt = new Date();
+      submission.status = 'pending';
+      submission.isAutoZero = false;
+      submission.allowResubmission = false;
+      submission.reopenReason = '';
+      submission.reopenedAt = null;
+      submission.reopenedBy = null;
+      submission.marks = null;
+      submission.remarks = '';
+      submission.feedback = '';
+      submission.evaluatedBy = null;
+      submission.evaluatedAt = null;
+      submission.aiMarks = null;
+      submission.aiFeedback = '';
+      submission.missingPoints = '';
+      submission.aiEvaluatedAt = null;
+      submission.aiModel = null;
+      submission.aiRawResponse = null;
+      submission.aiReport = {
+        strengths: [],
+        weaknesses: [],
+        improvements: [],
+      };
+      submission.resubmissionCount = Number(submission.resubmissionCount || 0) + 1;
+      submission.evaluationDetails = buildEvaluationDetails(submission.evaluationDetails, {
+        finalMarks: null,
+        finalFeedback: '',
+        aiMarks: null,
+        aiFeedback: '',
+        missingPoints: '',
+        reopenedForResubmissionAt: reopenedAt,
+        reopenedForResubmissionBy: reopenedBy,
+        reopenedForResubmissionReason: reopenReason,
+        lastResubmittedAt: submission.submittedAt,
+        resubmissionCount: submission.resubmissionCount,
+      });
+
+      await submission.save();
+
+      if (previousFilePath && !previousWasAutoZero) {
+        cleanupUploadedFile(previousFilePath);
+      }
+
+      void runPostSubmissionAnalysis({
+        submissionId: submission._id,
+        taskDescription: task.description,
+        answerText,
+        filePath: req.file.path,
+        originalFileName: req.file.originalname,
+        isPdfUpload,
+      });
+
+      return res.status(200).json({
+        message: 'Resubmission uploaded successfully.',
+        submission: toClientSubmission(submission),
+      });
+    }
 
     if (submission) {
       const existingSubmission = toClientSubmission(submission);
@@ -414,6 +497,47 @@ exports.submitTask = async (req, res) => {
     });
   } catch (error) {
     res.status(500).json({ message: error.message });
+  }
+};
+
+exports.reopenSubmission = async (req, res) => {
+  try {
+    const reopenReason = String(req.body.reason || req.body.message || '').trim();
+
+    const submission = await Submission.findById(req.params.id)
+      .populate('taskId', 'createdBy')
+      .populate('task', 'createdBy');
+    if (!submission) {
+      return res.status(404).json({ message: 'Submission not found' });
+    }
+
+    const access = await ensureSubmissionAccess(req, submission);
+    if (access.error) {
+      return res.status(access.error.status).json({ message: access.error.message });
+    }
+
+    const wasOpen = Boolean(submission.allowResubmission);
+    submission.allowResubmission = true;
+    submission.reopenReason = reopenReason;
+    submission.reopenedAt = new Date();
+    submission.reopenedBy = req.user._id;
+    submission.evaluationDetails = buildEvaluationDetails(submission.evaluationDetails, {
+      reopenedForResubmission: true,
+      reopenedForResubmissionAt: submission.reopenedAt,
+      reopenedForResubmissionBy: req.user._id,
+      reopenedForResubmissionReason: reopenReason,
+    });
+
+    await submission.save();
+
+    return res.json({
+      message: wasOpen
+        ? 'Resubmission window already open. Details updated.'
+        : 'Resubmission window opened for this student.',
+      submission: toClientSubmission(submission),
+    });
+  } catch (error) {
+    return res.status(500).json({ message: error.message || 'Failed to reopen submission.' });
   }
 };
 
