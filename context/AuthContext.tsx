@@ -10,10 +10,10 @@ import api, {
 export const AUTH_STATE_EVENT = 'dtep-auth-state-changed';
 const COLD_START_LOGIN_MESSAGE =
   'Backend is waking up on Render. Keep this page open while login continues automatically.';
-const LOGIN_AUTO_RETRY_WINDOW_MS = 65000;
+const LOGIN_AUTO_RETRY_WINDOW_MS = 180000;
 const LOGIN_AUTO_RETRY_DELAY_BASE_MS = 2000;
-const LOGIN_AUTO_RETRY_DELAY_MAX_MS = 8000;
-const LOGIN_WARMUP_WAIT_CAP_MS = 12000;
+const LOGIN_AUTO_RETRY_DELAY_MAX_MS = 10000;
+const LOGIN_WARMUP_WAIT_CAP_MS = 20000;
 const SESSION_VALIDATION_INTERVAL_MS = 30000;
 
 const wait = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
@@ -91,7 +91,7 @@ const classifyLoginError = (error: any) => {
     };
   }
 
-  const isColdStartLikeStatus = status === 502 || status === 503 || status === 504;
+  const isColdStartLikeStatus = status === 408 || status === 502 || status === 503 || status === 504;
   const isColdStartLikeMessage =
     normalizedResponseMessage.includes('timeout') ||
     normalizedResponseMessage.includes('timed out') ||

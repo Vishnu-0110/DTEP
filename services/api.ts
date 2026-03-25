@@ -3,7 +3,7 @@ import axios, { AxiosError, InternalAxiosRequestConfig } from 'axios';
 
 const LOOPBACK_HOSTS = new Set(['localhost', '127.0.0.1', '::1']);
 const DEFAULT_TIMEOUT_MS = 30000;
-const LOGIN_TIMEOUT_MS = 30000;
+const DEFAULT_LOGIN_TIMEOUT_MS = 90000;
 const DEFAULT_RETRY_MAX = 2;
 const DEFAULT_RETRY_DELAY_MS = 1200;
 const RETRYABLE_METHODS = new Set(['get', 'head', 'options']);
@@ -11,9 +11,9 @@ const RETRY_COUNT_KEY = '__dtep_retry_count';
 const SKIP_RETRY_KEY = '__dtep_skip_retry';
 const AUTH_STORAGE_KEY = 'dtep_user';
 const AUTH_STATE_EVENT = 'dtep-auth-state-changed';
-const WARMUP_ATTEMPTS = 4;
-const WARMUP_DELAY_MS = 1200;
-const WARMUP_TIMEOUT_MS = 5000;
+const WARMUP_ATTEMPTS = 8;
+const WARMUP_DELAY_MS = 1500;
+const WARMUP_TIMEOUT_MS = 10000;
 
 const trimTrailingSlash = (value: string) => value.replace(/\/+$/, '');
 const wait = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
@@ -139,7 +139,12 @@ const resolveTimeoutMs = () => {
 };
 
 export const API_TIMEOUT_MS = resolveTimeoutMs();
-export const AUTH_LOGIN_TIMEOUT_MS = Math.min(API_TIMEOUT_MS, LOGIN_TIMEOUT_MS);
+export const AUTH_LOGIN_TIMEOUT_MS = resolveNumberEnv(
+  'VITE_AUTH_LOGIN_TIMEOUT_MS',
+  Math.max(API_TIMEOUT_MS, DEFAULT_LOGIN_TIMEOUT_MS),
+  10000,
+  180000
+);
 export const API_RETRY_MAX = resolveNumberEnv('VITE_API_RETRY_MAX', DEFAULT_RETRY_MAX, 0, 5);
 export const API_RETRY_DELAY_MS = resolveNumberEnv(
   'VITE_API_RETRY_DELAY_MS',
