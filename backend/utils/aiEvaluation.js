@@ -96,7 +96,7 @@ const DEFAULT_RUBRIC_SECTIONS = [
     label: 'Topic',
     maxMarks: 10,
     required: true,
-    minWords: 80,
+    minWords: 0,
     aliases: ['topic', 'title', 'subject'],
     guidance: 'Introduce the exact topic and scope clearly.',
   },
@@ -113,7 +113,16 @@ const DEFAULT_RUBRIC_SECTIONS = [
     maxMarks: 20,
     required: true,
     minWords: 220,
-    aliases: ['core concepts', 'concept explanation', 'explanation of concepts', 'concepts'],
+    aliases: [
+      'core concepts',
+      'concept explanation',
+      'explanation of concepts',
+      'concepts',
+      'implications',
+      'analysis',
+      'discussion',
+      'considerations',
+    ],
     guidance: 'Explain the key ideas accurately and in depth.',
   },
   {
@@ -239,12 +248,25 @@ const normalizeRubricSections = (rawSections = [], { keepOriginalMarks = false }
       ...(Array.isArray(item?.headings) ? item.headings : []),
     ]);
 
+    const baseMinWords = clampInt(
+      item?.minWords ?? item?.wordTarget ?? item?.targetWords,
+      40,
+      1500,
+      DEFAULT_SECTION_WORD_MIN
+    );
+    const normalizedKey = toSectionKey(label, index);
+    const minWords = normalizedKey === 'topic'
+      ? clampInt(item?.minWords ?? item?.wordTarget ?? item?.targetWords, 0, 120, 0)
+      : normalizedKey === 'references'
+        ? clampInt(item?.minWords ?? item?.wordTarget ?? item?.targetWords, 20, 400, 40)
+        : baseMinWords;
+
     normalized.push({
       key,
       label,
       maxMarks: Math.max(1, clampInt(item?.maxMarks, 1, 100, 10)),
       required: item?.required !== false,
-      minWords: clampInt(item?.minWords ?? item?.wordTarget ?? item?.targetWords, 40, 1500, DEFAULT_SECTION_WORD_MIN),
+      minWords,
       aliases,
       guidance: String(item?.guidance || '').trim(),
     });
@@ -664,7 +686,9 @@ const findSections = (text, sectionDefinitions = []) => {
 
 const getWordCountRatio = (wordCount, minWords) => {
   if (!Number.isFinite(wordCount) || wordCount <= 0) return 0;
-  const target = Math.max(40, Math.trunc(Number(minWords) || DEFAULT_SECTION_WORD_MIN));
+  const numericTarget = Math.trunc(Number(minWords));
+  if (!Number.isFinite(numericTarget) || numericTarget <= 0) return 1;
+  const target = Math.max(40, numericTarget);
   const ratio = wordCount / target;
   if (ratio >= 1) return 1;
   if (ratio >= 0.8) return 0.85;
@@ -1009,7 +1033,7 @@ const buildFallbackRubricFromTopic = ({ title, description, requiredPages = 0 })
       label: 'Topic',
       maxMarks: 10,
       required: true,
-      minWords: 80,
+      minWords: 0,
       aliases: ['topic', 'title', 'subject'],
       guidance: 'State the exact topic and scope.',
     },

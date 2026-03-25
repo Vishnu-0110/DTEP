@@ -24,6 +24,9 @@ const MISSING_CONTENT_FEEDBACK_PATTERNS = [
   /not provided or accessible/i,
   /no points can be awarded/i,
 ];
+const AI_EVAL_MAX_CHARS = 60000;
+const AI_EVAL_HEAD_CHARS = 35000;
+const AI_EVAL_TAIL_CHARS = 25000;
 
 const isPdfFile = (fileNameOrPath) =>
   String(fileNameOrPath || '').trim().toLowerCase().endsWith('.pdf');
@@ -35,6 +38,17 @@ const looksLikePlaceholderAnswer = (value) => {
 const normalizeReadableAnswer = (value) => {
   const text = String(value || '').trim();
   return looksLikePlaceholderAnswer(text) ? '' : text;
+};
+const prepareAnswerForEvaluation = (value) => {
+  const text = normalizeReadableAnswer(value);
+  if (!text) return '';
+  if (text.length <= AI_EVAL_MAX_CHARS) return text;
+
+  return [
+    text.slice(0, AI_EVAL_HEAD_CHARS),
+    '\n\n[... middle content omitted for length ...]\n\n',
+    text.slice(-AI_EVAL_TAIL_CHARS),
+  ].join('');
 };
 const looksLikeMissingContentFeedback = (value) => {
   const text = String(value || '').trim();
@@ -173,7 +187,7 @@ const runPostSubmissionAnalysis = async ({
       return;
     }
 
-    const answerForEvaluation = derivedAnswer.slice(0, 20000);
+    const answerForEvaluation = prepareAnswerForEvaluation(derivedAnswer);
     const aiResult = await evaluateAnswer(taskDescription, answerForEvaluation, {
       title: taskTitle,
       rubricText,
@@ -683,7 +697,7 @@ exports.generateAiAssist = async (req, res) => {
       submission.answer = answerText;
     }
 
-    const answerForEvaluation = answerText.slice(0, 20000);
+    const answerForEvaluation = prepareAnswerForEvaluation(answerText);
 
     const aiDraft = await evaluateDetailedAnswer(taskDoc.description, answerForEvaluation, {
       title: taskDoc.title,
