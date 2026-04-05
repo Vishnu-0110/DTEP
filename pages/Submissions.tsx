@@ -27,6 +27,14 @@ const escapeHtml = (value: string) =>
     .replace(/>/g, '&gt;')
     .replace(/"/g, '&quot;')
     .replace(/'/g, '&#39;');
+const URL_PATTERN = /\bhttps?:\/\/\S+\b/gi;
+const TITLE_SOURCE_TAIL_PATTERN = /\s*(?:source|reference|identity\s*source)\s*[:\-]\s*[\s\S]*$/i;
+const sanitizeAssignmentTitle = (value = '') =>
+  String(value || '')
+    .replace(TITLE_SOURCE_TAIL_PATTERN, '')
+    .replace(URL_PATTERN, '')
+    .replace(/\s+/g, ' ')
+    .trim();
 
 const Submissions: React.FC = () => {
   const { taskId } = useParams();
@@ -479,6 +487,7 @@ const Submissions: React.FC = () => {
   const isEvaluated = activeSubmission?.status === 'evaluated';
   const isMissedSubmission = Boolean(activeSubmission?.isAutoZero);
   const currentScoreTone = getScoreTone(marks);
+  const taskTitle = sanitizeAssignmentTitle(task?.title || '');
 
   return (
     <div className="space-y-6 lg:space-y-10 animate-in fade-in duration-500 pb-10">
@@ -486,7 +495,7 @@ const Submissions: React.FC = () => {
         <div className="space-y-1">
           <p className="text-[10px] font-black theme-text-primary uppercase tracking-[0.4em]">Task ID: {taskId?.slice(-6)}</p>
           <h1 className="text-2xl sm:text-3xl lg:text-4xl font-black text-adaptive-main tracking-tighter uppercase leading-none">
-            {task?.title || 'Review Submissions'}
+            {taskTitle || 'Review Submissions'}
           </h1>
           <p className="text-adaptive-sub text-sm font-medium">Review submissions and assign marks.</p>
         </div>
@@ -597,7 +606,7 @@ const Submissions: React.FC = () => {
                   <Target size={14} className="theme-text-primary mt-1 shrink-0" />
                   <div className="min-w-0">
                     <p className="text-[8px] font-black text-adaptive-sub uppercase tracking-widest mb-0.5">Reference Task</p>
-                    <p className="text-xs font-bold text-adaptive-main break-words">{task?.title || "Evaluating Component"}</p>
+                    <p className="text-xs font-bold text-adaptive-main break-words">{taskTitle || "Evaluating Component"}</p>
                   </div>
                 </div>
 

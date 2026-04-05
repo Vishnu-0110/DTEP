@@ -35,7 +35,7 @@ const formatCountdown = (deadline?: string, nowMs?: number) => {
 };
 
 const URL_PATTERN = /\bhttps?:\/\/\S+\b/gi;
-const TITLE_SOURCE_TAIL_PATTERN = /\s*(?:source|reference|identity source)\s*[:\-]\s*.*$/i;
+const TITLE_SOURCE_TAIL_PATTERN = /\s*(?:source|reference|identity\s*source)\s*[:\-]\s*[\s\S]*$/i;
 const sanitizeStudentText = (value = '') => (
   String(value || '').replace(URL_PATTERN, '').trim()
 );

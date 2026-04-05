@@ -56,7 +56,7 @@ const DEFAULT_RUBRIC_GUIDANCE = [
 ];
 const FEEDBACK_PREVIEW_MAX_CHARS = 220;
 const URL_PATTERN = /\bhttps?:\/\/\S+\b/gi;
-const TITLE_SOURCE_TAIL_PATTERN = /\s*(?:source|reference|identity source)\s*[:\-]\s*.*$/i;
+const TITLE_SOURCE_TAIL_PATTERN = /\s*(?:source|reference|identity\s*source)\s*[:\-]\s*[\s\S]*$/i;
 
 const sanitizeStudentRubricText = (value = '') => (
   String(value || '')

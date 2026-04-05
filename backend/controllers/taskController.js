@@ -4,6 +4,16 @@ const User = require('../models/User');
 const { syncMissedSubmissions } = require('../utils/missedSubmissionSync');
 const { generateAssignmentRubric, buildFallbackRubricFromTopic } = require('../utils/aiEvaluation');
 
+const TITLE_URL_PATTERN = /\bhttps?:\/\/\S+\b/gi;
+const TITLE_SOURCE_TAIL_PATTERN = /\s*(?:source|reference|identity\s*source)\s*[:\-]\s*[\s\S]*$/i;
+const sanitizeTaskTitleForClient = (value = '') => (
+  String(value || '')
+    .replace(TITLE_SOURCE_TAIL_PATTERN, '')
+    .replace(TITLE_URL_PATTERN, '')
+    .replace(/\s+/g, ' ')
+    .trim()
+);
+
 const extractLabeledLine = (text = '', label = '') => {
   const source = String(text || '');
   const targetLabel = String(label || '').trim();
@@ -84,6 +94,7 @@ const normalizeTaskForClient = (taskDocOrObject) => {
 
   return {
     ...task,
+    title: sanitizeTaskTitleForClient(task.title) || 'Untitled Assignment',
     rubricText: normalizedRubricText,
   };
 };

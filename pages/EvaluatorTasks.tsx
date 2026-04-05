@@ -13,6 +13,16 @@ import {
 import api from '../services/api';
 import TaskModal from '../components/TaskModal';
 
+const URL_PATTERN = /\bhttps?:\/\/\S+\b/gi;
+const TITLE_SOURCE_TAIL_PATTERN = /\s*(?:source|reference|identity\s*source)\s*[:\-]\s*[\s\S]*$/i;
+const sanitizeAssignmentTitle = (value = '') => (
+  String(value || '')
+    .replace(TITLE_SOURCE_TAIL_PATTERN, '')
+    .replace(URL_PATTERN, '')
+    .replace(/\s+/g, ' ')
+    .trim()
+);
+
 const EvaluatorTasks: React.FC = () => {
   const [tasks, setTasks] = useState<any[]>([]);
   const [isLoading, setIsLoading] = useState(true);
@@ -72,7 +82,8 @@ const EvaluatorTasks: React.FC = () => {
     setError('');
     setSuccess('');
 
-    const confirmed = window.confirm(`Delete assignment "${task.title}"? This will also remove all related submissions.`);
+    const safeTitle = sanitizeAssignmentTitle(task?.title || '') || 'this assignment';
+    const confirmed = window.confirm(`Delete assignment "${safeTitle}"? This will also remove all related submissions.`);
     if (!confirmed) return;
 
     try {
@@ -124,6 +135,7 @@ const EvaluatorTasks: React.FC = () => {
       ) : (
         <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4 lg:gap-6">
           {tasks.map((task) => {
+            const taskTitle = sanitizeAssignmentTitle(task?.title || '') || 'Untitled Assignment';
             const submittedUnits = Number.isFinite(Number(task?.submissions)) ? Number(task.submissions) : 0;
             const totalUnits = Number.isFinite(Number(task?.total)) ? Number(task.total) : 0;
             const responseRate = totalUnits > 0 ? Math.min(100, (submittedUnits / totalUnits) * 100) : 0;
@@ -144,7 +156,7 @@ const EvaluatorTasks: React.FC = () => {
                   onClick={() => handleDeleteTask(task)}
                   disabled={deletingTaskId === task._id}
                   className="text-rose-500 hover:text-rose-400 transition-colors p-2 rounded-xl active:scale-90 bg-rose-500/10 border border-rose-500/15 disabled:opacity-50 disabled:cursor-not-allowed"
-                  aria-label={`Delete task ${task.title}`}
+                  aria-label={`Delete task ${taskTitle}`}
                   title="Delete Task"
                 >
                   {deletingTaskId === task._id ? <Loader2 size={16} className="animate-spin" /> : <Trash2 size={16} />}
@@ -153,7 +165,7 @@ const EvaluatorTasks: React.FC = () => {
 
               <div className="relative z-10">
                 <h3 className="text-xl font-black text-adaptive-main mb-1 group-hover:theme-text-primary transition-colors tracking-tight line-clamp-1 uppercase">
-                  {task.title}
+                  {taskTitle}
                 </h3>
                 <p className="text-[9px] text-adaptive-sub font-black uppercase tracking-widest mb-6 opacity-60">ID: {task._id.slice(-8)}</p>
               </div>
