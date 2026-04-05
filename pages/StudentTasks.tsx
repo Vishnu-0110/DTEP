@@ -56,6 +56,7 @@ const DEFAULT_RUBRIC_GUIDANCE = [
 ];
 const FEEDBACK_PREVIEW_MAX_CHARS = 220;
 const URL_PATTERN = /\bhttps?:\/\/\S+\b/gi;
+const TITLE_SOURCE_TAIL_PATTERN = /\s*(?:source|reference|identity source)\s*[:\-]\s*.*$/i;
 
 const sanitizeStudentRubricText = (value = '') => (
   String(value || '')
@@ -64,6 +65,14 @@ const sanitizeStudentRubricText = (value = '') => (
     .map((line) => String(line || '').replace(URL_PATTERN, '').trimEnd())
     .filter(Boolean)
     .join('\n')
+    .trim()
+);
+
+const sanitizeStudentTitle = (value = '') => (
+  String(value || '')
+    .replace(TITLE_SOURCE_TAIL_PATTERN, '')
+    .replace(URL_PATTERN, '')
+    .replace(/\s+/g, ' ')
     .trim()
 );
 
@@ -125,9 +134,11 @@ const StudentTasks: React.FC = () => {
       const mappedTasks = (tasksRes.data || []).map((task: any) => {
         const taskId = String(task._id);
         const submission = submissionsByTask.get(taskId);
+        const cleanTitle = sanitizeStudentTitle(task?.title || '');
 
         return {
           ...task,
+          title: cleanTitle || 'Untitled Assignment',
           teacher: task.createdBy?.name || 'Evaluator',
           hasSubmission: Boolean(submission),
           reviewStatus: submission?.status || null,

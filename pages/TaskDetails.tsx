@@ -35,8 +35,16 @@ const formatCountdown = (deadline?: string, nowMs?: number) => {
 };
 
 const URL_PATTERN = /\bhttps?:\/\/\S+\b/gi;
+const TITLE_SOURCE_TAIL_PATTERN = /\s*(?:source|reference|identity source)\s*[:\-]\s*.*$/i;
 const sanitizeStudentText = (value = '') => (
   String(value || '').replace(URL_PATTERN, '').trim()
+);
+const sanitizeStudentTitle = (value = '') => (
+  String(value || '')
+    .replace(TITLE_SOURCE_TAIL_PATTERN, '')
+    .replace(URL_PATTERN, '')
+    .replace(/\s+/g, ' ')
+    .trim()
 );
 
 const sanitizeStudentRubricText = (value = '') => (
@@ -61,6 +69,7 @@ const TaskDetails: React.FC = () => {
   const verifiedScoreTone = getScoreTone(verifiedScore);
   const rubricText = sanitizeStudentRubricText((task as any)?.rubricText || '');
   const taskDescription = sanitizeStudentText((task as any)?.description || '');
+  const taskTitle = sanitizeStudentTitle((task as any)?.title || '');
   const requiredPages = Math.max(0, Math.trunc(Number((task as any)?.requiredPages || 0)));
   const sectionAnalysis = Array.isArray((submission as any)?.evaluationDetails?.sectionAnalysis)
     ? (submission as any).evaluationDetails.sectionAnalysis
@@ -130,7 +139,7 @@ const TaskDetails: React.FC = () => {
 
         <div className="space-y-8">
           <div className="space-y-3">
-            <h1 className="text-3xl sm:text-4xl lg:text-5xl font-black text-adaptive-main tracking-tighter leading-tight uppercase">{task?.title || 'Architecture Deep Dive'}</h1>
+            <h1 className="text-3xl sm:text-4xl lg:text-5xl font-black text-adaptive-main tracking-tighter leading-tight uppercase">{taskTitle || 'Architecture Deep Dive'}</h1>
             {taskDescription && (
               <p className="text-adaptive-sub text-base sm:text-lg font-medium leading-relaxed max-w-2xl">{taskDescription}</p>
             )}
