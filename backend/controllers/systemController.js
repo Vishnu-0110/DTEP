@@ -29,7 +29,7 @@ const toMaintenancePayload = (settingDoc) => {
 
   return {
     enabled,
-    message: enabled ? (rawMessage || 'The platform is currently under maintenance.') : rawMessage,
+    message: enabled ? (rawMessage || 'The platform is currently under maintenance.') : '',
     updatedAt: settingDoc?.updatedAt || null,
   };
 };
@@ -48,7 +48,7 @@ const toMaintenanceEvent = (maintenanceStatus, sinceMaintenanceAt) => {
 
   return {
     ...maintenanceStatus,
-    message: maintenanceStatus.message || 'Maintenance has ended.'
+    message: 'Maintenance has ended.'
   };
 };
 

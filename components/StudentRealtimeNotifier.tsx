@@ -131,6 +131,7 @@ const StudentRealtimeNotifier: React.FC<StudentRealtimeNotifierProps> = ({
   const taskNotificationRef = useRef(onTaskNotification);
   const evaluatorNotificationRef = useRef(onEvaluatorSubmissionNotification);
   const maintenanceStatusRef = useRef(onMaintenanceStatusChange);
+  const lastKnownMaintenanceStatusRef = useRef<MaintenanceStatus | null>(null);
   const permissionRef = useRef<NotificationPermissionState>(permission);
 
   const activeRole = user?.role === 'student' || user?.role === 'evaluator'
@@ -152,6 +153,7 @@ const StudentRealtimeNotifier: React.FC<StudentRealtimeNotifierProps> = ({
 
   useEffect(() => {
     maintenanceStatusRef.current?.(maintenanceStatus);
+    lastKnownMaintenanceStatusRef.current = maintenanceStatus;
   }, [maintenanceStatus]);
 
   const shouldShowPermissionPrompt = useMemo(() => {
@@ -197,10 +199,11 @@ const StudentRealtimeNotifier: React.FC<StudentRealtimeNotifierProps> = ({
     }
 
     const fallbackIso = new Date(Date.now() - POLL_LOOKBACK_MS).toISOString();
+    const maintenanceFallbackIso = new Date().toISOString();
     const primaryKey = getPrimaryNotificationKey(activeRole);
     const maintenanceKey = getMaintenanceNotificationKey(activeRole);
     lastPrimaryAtRef.current = getSafeSinceIso(localStorage.getItem(primaryKey), fallbackIso);
-    lastMaintenanceAtRef.current = getSafeSinceIso(localStorage.getItem(maintenanceKey), fallbackIso);
+    lastMaintenanceAtRef.current = getSafeSinceIso(localStorage.getItem(maintenanceKey), maintenanceFallbackIso);
     localStorage.setItem(primaryKey, lastPrimaryAtRef.current);
     localStorage.setItem(maintenanceKey, lastMaintenanceAtRef.current);
 
@@ -246,10 +249,12 @@ const StudentRealtimeNotifier: React.FC<StudentRealtimeNotifierProps> = ({
         const payload = response.data || {};
         const currentMaintenance = normalizeMaintenanceStatus(payload.maintenanceStatus);
         const maintenanceEvent = normalizeMaintenanceStatus(payload.maintenanceEvent);
+        const previousMaintenance = lastKnownMaintenanceStatusRef.current;
 
         setMaintenanceStatus((previous) =>
           hasSameMaintenanceStatus(previous, currentMaintenance) ? previous : currentMaintenance
         );
+        lastKnownMaintenanceStatusRef.current = currentMaintenance;
 
         if (activeRole === 'student') {
           const newTasks = Array.isArray(payload.newTasks) ? payload.newTasks : [];
@@ -330,13 +335,18 @@ const StudentRealtimeNotifier: React.FC<StudentRealtimeNotifierProps> = ({
           const maintenanceUpdatedAt = safeToISOString(maintenanceEvent.updatedAt) || new Date().toISOString();
           updateLastMaintenanceAt(activeRole, maintenanceUpdatedAt);
 
-          const title = maintenanceEvent.enabled ? 'Under Maintenance' : 'Maintenance Ended';
-          const body = maintenanceEvent.message || (maintenanceEvent.enabled
-            ? 'The site is currently under maintenance.'
-            : 'Maintenance has ended.');
+          const shouldNotifyMaintenance = maintenanceEvent.enabled
+            || Boolean(previousMaintenance?.enabled && currentMaintenance && !currentMaintenance.enabled);
 
-          pushToast(title, body, 'maintenance');
-          triggerBrowserNotification(title, body);
+          if (shouldNotifyMaintenance) {
+            const title = maintenanceEvent.enabled ? 'Under Maintenance' : 'Maintenance Ended';
+            const body = maintenanceEvent.enabled
+              ? (maintenanceEvent.message || 'The site is currently under maintenance.')
+              : 'Maintenance has ended.';
+
+            pushToast(title, body, 'maintenance');
+            triggerBrowserNotification(title, body);
+          }
         }
         networkFailureCount = 0;
       } catch (error: any) {

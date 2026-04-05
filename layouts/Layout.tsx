@@ -597,10 +597,10 @@ const Layout: React.FC = () => {
                 </button>
 
                 {isNotificationMenuOpen && (
-                  <div className="absolute top-14 right-0 w-[calc(100vw-1rem)] max-w-[320px] glass-card rounded-2xl p-3 shadow-2xl border border-white/10 z-20 animate-in fade-in zoom-in-95 duration-200">
-                      <div className="flex items-center justify-between gap-2 px-1 pb-2 border-b border-white/10 mb-2">
-                        <p className="text-[9px] font-black text-adaptive-sub uppercase tracking-[0.2em]">
-                          {isStudent ? 'Assignments' : 'Submissions'}
+                  <div className="fixed top-20 left-1/2 -translate-x-1/2 w-[calc(100vw-1rem)] max-w-[320px] glass-card rounded-2xl p-3 shadow-2xl border border-white/10 z-20 animate-in fade-in zoom-in-95 duration-200 sm:absolute sm:top-14 sm:right-0 sm:left-auto sm:translate-x-0">
+                    <div className="flex items-center justify-between gap-2 px-1 pb-2 border-b border-white/10 mb-2">
+                      <p className="text-[9px] font-black text-adaptive-sub uppercase tracking-[0.2em]">
+                        {isStudent ? 'Assignments' : 'Submissions'}
                         </p>
                         {(isStudent ? studentTaskNotifications.length > 0 : evaluatorSubmissionNotifications.length > 0) && (
                           <button
