@@ -1,5 +1,6 @@
 const Task = require('../models/Task');
 const Submission = require('../models/Submission');
+const SubmissionBlob = require('../models/SubmissionBlob');
 const User = require('../models/User');
 const { syncMissedSubmissions } = require('../utils/missedSubmissionSync');
 const { generateAssignmentRubric, buildFallbackRubricFromTopic } = require('../utils/aiEvaluation');
@@ -294,9 +295,15 @@ exports.deleteTask = async (req, res) => {
       return res.status(403).json({ message: 'Not authorized to delete this task' });
     }
 
+    const taskSubmissionIds = await Submission.find({
+      $or: [{ taskId: task._id }, { task: task._id }]
+    }).distinct('_id');
     await Submission.deleteMany({
       $or: [{ taskId: task._id }, { task: task._id }]
     });
+    if (Array.isArray(taskSubmissionIds) && taskSubmissionIds.length > 0) {
+      await SubmissionBlob.deleteMany({ submissionId: { $in: taskSubmissionIds } });
+    }
     await task.deleteOne();
 
     res.json({ message: 'Task and related submissions deleted successfully' });

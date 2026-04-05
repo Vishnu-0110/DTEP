@@ -1,4 +1,5 @@
 const Submission = require('../models/Submission');
+const SubmissionBlob = require('../models/SubmissionBlob');
 const Task = require('../models/Task');
 const fs = require('fs');
 const path = require('path');
@@ -27,6 +28,10 @@ const MISSING_CONTENT_FEEDBACK_PATTERNS = [
 const AI_EVAL_MAX_CHARS = 60000;
 const AI_EVAL_HEAD_CHARS = 35000;
 const AI_EVAL_TAIL_CHARS = 25000;
+const FILE_BACKUP_MAX_BYTES = 12 * 1024 * 1024;
+const DISABLE_DB_FILE_BACKUP = ['1', 'true', 'yes'].includes(
+  String(process.env.DISABLE_DB_FILE_BACKUP || '').trim().toLowerCase()
+);
 
 const isPdfFile = (fileNameOrPath) =>
   String(fileNameOrPath || '').trim().toLowerCase().endsWith('.pdf');
@@ -131,6 +136,99 @@ const cleanupUploadedFile = (filePath) => {
   } catch (cleanupError) {
     console.warn(`Upload cleanup failed for ${filePath}: ${cleanupError.message}`);
   }
+};
+
+const persistSubmissionFileBackup = async ({
+  submissionId,
+  filePath,
+  fileName,
+  mimeType,
+}) => {
+  if (DISABLE_DB_FILE_BACKUP) return;
+  if (!submissionId || !filePath) return;
+
+  try {
+    if (!fs.existsSync(filePath)) return;
+    const stats = fs.statSync(filePath);
+    if (!stats || !stats.isFile()) return;
+    if (stats.size <= 0 || stats.size > FILE_BACKUP_MAX_BYTES) return;
+
+    const fileData = fs.readFileSync(filePath);
+    if (!Buffer.isBuffer(fileData) || fileData.length === 0) return;
+
+    await SubmissionBlob.findOneAndUpdate(
+      { submissionId },
+      {
+        $set: {
+          fileData,
+          fileMimeType: String(mimeType || '').trim() || getMimeTypeForPath(fileName || filePath),
+          fileName: String(fileName || path.basename(filePath)).trim() || 'submission-file',
+          fileSize: fileData.length,
+        },
+      },
+      { upsert: true, setDefaultsOnInsert: true }
+    );
+  } catch (error) {
+    console.warn(`DB file backup failed for submission ${submissionId}: ${error.message}`);
+  }
+};
+
+const sendSubmissionBlobIfAvailable = async (res, submissionDoc) => {
+  try {
+    const blobDoc = await SubmissionBlob.findOne({ submissionId: submissionDoc?._id })
+      .select('fileData fileMimeType fileName')
+      .lean();
+    const payload = blobDoc?.fileData;
+    if (!payload) return false;
+
+    const fileBuffer = Buffer.isBuffer(payload)
+      ? payload
+      : Buffer.isBuffer(payload?.buffer)
+        ? payload.buffer
+        : (payload?.type === 'Buffer' && Array.isArray(payload?.data))
+          ? Buffer.from(payload.data)
+          : null;
+    if (!Buffer.isBuffer(fileBuffer) || fileBuffer.length === 0) return false;
+
+    const safeFileName = String(
+      blobDoc?.fileName || submissionDoc?.fileName || `submission-${submissionDoc?._id || 'file'}`
+    ).trim();
+    res.setHeader(
+      'Content-Type',
+      String(blobDoc?.fileMimeType || '').trim() || getMimeTypeForPath(safeFileName)
+    );
+    res.setHeader('Content-Disposition', `inline; filename="${safeFileName}"`);
+    res.setHeader('X-Submission-Source', 'db-backup');
+    res.send(fileBuffer);
+    return true;
+  } catch (error) {
+    console.warn(`DB file backup read failed for submission ${submissionDoc?._id}: ${error.message}`);
+    return false;
+  }
+};
+
+const sendReadableAnswerFallback = (res, submissionDoc) => {
+  const readableAnswer = normalizeReadableAnswer(submissionDoc?.answer);
+  if (!readableAnswer) return false;
+
+  const baseName = String(submissionDoc?.fileName || `submission-${submissionDoc?._id || 'answer'}`).trim();
+  const fallbackName = `${path.parse(baseName).name || 'submission-answer'}-recovered.txt`;
+  const fallbackText = [
+    'Recovered Submission Content',
+    '',
+    'Original uploaded file is unavailable on server storage.',
+    'Showing extracted submission text preserved in the database.',
+    '',
+    '----- BEGIN SUBMISSION TEXT -----',
+    readableAnswer,
+    '----- END SUBMISSION TEXT -----',
+  ].join('\n');
+
+  res.setHeader('Content-Type', 'text/plain; charset=utf-8');
+  res.setHeader('Content-Disposition', `inline; filename="${fallbackName}"`);
+  res.setHeader('X-Submission-Source', 'text-fallback');
+  res.send(fallbackText);
+  return true;
 };
 
 const extractSubmissionTextFromPdf = async (filePath) => {
@@ -278,22 +376,36 @@ const normalizeStoredSubmissionPath = (submissionDoc) => {
   const rawPath = String(submissionDoc?.submissionFile || submissionDoc?.fileUrl || '').trim();
   if (!rawPath) return '';
 
+  const candidateRoots = Array.from(new Set([
+    uploadRoot,
+    path.resolve(__dirname, '..', 'uploads'),
+    path.resolve(process.cwd(), 'uploads'),
+    '/app/uploads',
+    '/var/data/dtep-uploads',
+  ]));
+  const normalizedRelativePath = rawPath
+    .replace(/^uploads[\\/]+/i, '')
+    .replace(/^backend[\\/]uploads[\\/]+/i, '');
+
   if (path.isAbsolute(rawPath)) {
-    return path.normalize(rawPath);
+    const absolutePath = path.normalize(rawPath);
+    if (fs.existsSync(absolutePath)) {
+      return absolutePath;
+    }
+
+    const basename = path.basename(absolutePath);
+    for (const rootPath of candidateRoots) {
+      const candidate = path.resolve(rootPath, basename);
+      if (fs.existsSync(candidate)) {
+        return candidate;
+      }
+    }
   }
 
   const legacyResolvedPath = path.resolve(__dirname, '..', rawPath);
   if (fs.existsSync(legacyResolvedPath)) {
     return legacyResolvedPath;
   }
-
-  const normalizedRelativePath = rawPath.replace(/^uploads[\\/]+/i, '');
-  const candidateRoots = Array.from(new Set([
-    uploadRoot,
-    path.resolve(__dirname, '..', 'uploads'),
-    path.resolve(process.cwd(), 'uploads'),
-    '/app/uploads',
-  ]));
 
   for (const rootPath of candidateRoots) {
     const candidate = path.resolve(rootPath, normalizedRelativePath);
@@ -505,6 +617,12 @@ exports.submitTask = async (req, res) => {
       });
 
       await submission.save();
+      await persistSubmissionFileBackup({
+        submissionId: submission._id,
+        filePath: req.file.path,
+        fileName: req.file.originalname,
+        mimeType: req.file.mimetype,
+      });
 
       if (previousFilePath && !previousWasAutoZero) {
         cleanupUploadedFile(previousFilePath);
@@ -546,6 +664,12 @@ exports.submitTask = async (req, res) => {
       fileName: req.file.originalname,
       answer: answerText,
       submittedAt: new Date(),
+    });
+    await persistSubmissionFileBackup({
+      submissionId: submission._id,
+      filePath: req.file.path,
+      fileName: req.file.originalname,
+      mimeType: req.file.mimetype,
     });
 
     res.status(201).json(toClientSubmission(submission));
@@ -821,19 +945,24 @@ exports.viewSubmissionFile = async (req, res) => {
     }
 
     const resolvedPath = normalizeStoredSubmissionPath(submission);
-    if (!resolvedPath || !isPathInsideUploads(resolvedPath)) {
-      return res.status(400).json({ message: 'Submission file path is invalid.' });
+    const canReadFromDisk = Boolean(resolvedPath && isPathInsideUploads(resolvedPath) && fs.existsSync(resolvedPath));
+    if (canReadFromDisk) {
+      res.setHeader('Content-Type', getMimeTypeForPath(resolvedPath));
+      res.setHeader('Content-Disposition', `inline; filename="${submission.fileName || path.basename(resolvedPath)}"`);
+      return res.sendFile(resolvedPath);
     }
 
-    if (!fs.existsSync(resolvedPath)) {
-      return res.status(404).json({
-        message: 'Submission file not found on server storage. Re-upload may be required after redeploy if uploads were on ephemeral disk.',
-      });
+    if (await sendSubmissionBlobIfAvailable(res, submission)) {
+      return;
     }
 
-    res.setHeader('Content-Type', getMimeTypeForPath(resolvedPath));
-    res.setHeader('Content-Disposition', `inline; filename="${submission.fileName || path.basename(resolvedPath)}"`);
-    return res.sendFile(resolvedPath);
+    if (sendReadableAnswerFallback(res, submission)) {
+      return;
+    }
+
+    return res.status(404).json({
+      message: 'Submission file not found on server storage. Re-upload may be required after redeploy if uploads were on ephemeral disk.',
+    });
   } catch (error) {
     return res.status(500).json({ message: error.message || 'Failed to view submission file.' });
   }

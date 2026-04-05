@@ -15,6 +15,19 @@ const LOGIN_AUTO_RETRY_DELAY_BASE_MS = 2000;
 const LOGIN_AUTO_RETRY_DELAY_MAX_MS = 10000;
 const LOGIN_WARMUP_WAIT_CAP_MS = 20000;
 const SESSION_VALIDATION_INTERVAL_MS = 30000;
+const AUTH_STORAGE_KEY = 'dtep_user';
+const LAST_ACTIVITY_STORAGE_KEY = 'dtep_last_activity_at';
+const INACTIVITY_TIMEOUT_MS = 5 * 60 * 1000;
+const INACTIVITY_CHECK_INTERVAL_MS = 10000;
+const ACTIVITY_PERSIST_MIN_GAP_MS = 15000;
+const ACTIVITY_EVENTS: Array<keyof WindowEventMap> = [
+  'pointerdown',
+  'mousedown',
+  'keydown',
+  'touchstart',
+  'scroll',
+  'mousemove',
+];
 
 const wait = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
 const getLoginRetryDelay = (attempt: number) =>
@@ -22,12 +35,32 @@ const getLoginRetryDelay = (attempt: number) =>
 const VALID_ROLES = new Set<UserRole>([UserRole.ADMIN, UserRole.EVALUATOR, UserRole.STUDENT]);
 
 type StoredUser = User & { token: string };
+const readStoredLastActivity = (): number | null => {
+  if (typeof window === 'undefined') return null;
+  const raw = String(localStorage.getItem(LAST_ACTIVITY_STORAGE_KEY) || '').trim();
+  const parsed = Number(raw);
+  if (!Number.isFinite(parsed) || parsed <= 0) return null;
+  return parsed;
+};
+const writeStoredLastActivity = (value = Date.now()) => {
+  if (typeof window === 'undefined') return;
+  localStorage.setItem(LAST_ACTIVITY_STORAGE_KEY, String(Math.trunc(value)));
+};
+const clearStoredSession = () => {
+  if (typeof window === 'undefined') return;
+  localStorage.removeItem(AUTH_STORAGE_KEY);
+  localStorage.removeItem(LAST_ACTIVITY_STORAGE_KEY);
+};
+const isSessionExpiredByInactivity = (lastActivityAt: number | null) => {
+  if (!lastActivityAt) return true;
+  return Date.now() - lastActivityAt >= INACTIVITY_TIMEOUT_MS;
+};
 
 const readStoredUser = (): StoredUser | null => {
   if (typeof window === 'undefined') return null;
 
   try {
-    const raw = localStorage.getItem('dtep_user');
+    const raw = localStorage.getItem(AUTH_STORAGE_KEY);
     if (!raw) return null;
 
     const parsed = JSON.parse(raw);
@@ -40,13 +73,19 @@ const readStoredUser = (): StoredUser | null => {
     const profilePhoto = String(parsed?.profilePhoto || '').trim();
 
     if (!id || !name || !email || !token || !VALID_ROLES.has(role)) {
-      localStorage.removeItem('dtep_user');
+      clearStoredSession();
+      return null;
+    }
+
+    const lastActivityAt = readStoredLastActivity();
+    if (isSessionExpiredByInactivity(lastActivityAt)) {
+      clearStoredSession();
       return null;
     }
 
     return { id, name, email, role, department, token, profilePhoto };
   } catch (_) {
-    localStorage.removeItem('dtep_user');
+    clearStoredSession();
     return null;
   }
 };
@@ -139,8 +178,31 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const isDemoMode = false;
   const clearAuthSession = useCallback(() => {
     setUser(null);
-    localStorage.removeItem('dtep_user');
+    clearStoredSession();
     emitAuthStateChanged();
+  }, []);
+
+  useEffect(() => {
+    const syncFromStorage = () => {
+      const nextStoredUser = readStoredUser();
+      if (!nextStoredUser) {
+        setUser(null);
+        return;
+      }
+      setUser(nextStoredUser);
+    };
+
+    const handleStorage = (event: StorageEvent) => {
+      if (event.key && event.key !== AUTH_STORAGE_KEY && event.key !== LAST_ACTIVITY_STORAGE_KEY) return;
+      syncFromStorage();
+    };
+
+    window.addEventListener('storage', handleStorage);
+    window.addEventListener(AUTH_STATE_EVENT, syncFromStorage);
+    return () => {
+      window.removeEventListener('storage', handleStorage);
+      window.removeEventListener(AUTH_STATE_EVENT, syncFromStorage);
+    };
   }, []);
 
   useEffect(() => {
@@ -211,6 +273,60 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     };
   }, [user, clearAuthSession]);
 
+  useEffect(() => {
+    if (!user) return;
+
+    let isMounted = true;
+    let lastPersistedAt = Date.now();
+
+    const persistActivity = (force = false) => {
+      if (!isMounted) return;
+      const now = Date.now();
+      if (!force && now - lastPersistedAt < ACTIVITY_PERSIST_MIN_GAP_MS) return;
+      lastPersistedAt = now;
+      writeStoredLastActivity(now);
+    };
+
+    const enforceInactivityTimeout = () => {
+      const lastActivityAt = readStoredLastActivity();
+      if (!isSessionExpiredByInactivity(lastActivityAt)) return false;
+      clearAuthSession();
+      if (typeof window !== 'undefined' && window.location.hash !== '#/login') {
+        window.location.hash = '#/login';
+      }
+      return true;
+    };
+
+    // Ensure active sessions start with a fresh activity marker.
+    persistActivity(true);
+    const inactivityTimer = window.setInterval(() => {
+      void enforceInactivityTimeout();
+    }, INACTIVITY_CHECK_INTERVAL_MS);
+
+    const handleActivity = () => {
+      if (Date.now() - lastPersistedAt >= INACTIVITY_TIMEOUT_MS && enforceInactivityTimeout()) return;
+      persistActivity(false);
+    };
+    const handleVisibilityOrFocus = () => {
+      if (enforceInactivityTimeout()) return;
+      if (document.visibilityState === 'visible') {
+        persistActivity(true);
+      }
+    };
+
+    ACTIVITY_EVENTS.forEach((eventName) => window.addEventListener(eventName, handleActivity));
+    window.addEventListener('focus', handleVisibilityOrFocus);
+    document.addEventListener('visibilitychange', handleVisibilityOrFocus);
+
+    return () => {
+      isMounted = false;
+      window.clearInterval(inactivityTimer);
+      ACTIVITY_EVENTS.forEach((eventName) => window.removeEventListener(eventName, handleActivity));
+      window.removeEventListener('focus', handleVisibilityOrFocus);
+      document.removeEventListener('visibilitychange', handleVisibilityOrFocus);
+    };
+  }, [user, clearAuthSession]);
+
   const login = useCallback(async (email: string, password: string, expectedRole: UserRole) => {
     await Promise.race([
       warmupBackendConnection(),
@@ -246,7 +362,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         };
 
         setUser(userData);
-        localStorage.setItem('dtep_user', JSON.stringify(userData));
+        localStorage.setItem(AUTH_STORAGE_KEY, JSON.stringify(userData));
+        writeStoredLastActivity(Date.now());
         emitAuthStateChanged();
         return;
       } catch (error: any) {
