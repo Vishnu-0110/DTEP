@@ -182,6 +182,8 @@ const runPostSubmissionAnalysis = async ({
         aiMarks: null,
         aiFeedback: NO_READABLE_CONTENT_MESSAGE,
         missingPoints: '',
+        offTopicDetected: false,
+        offTopicReason: '',
       });
       await submission.save();
       return;
@@ -207,6 +209,8 @@ const runPostSubmissionAnalysis = async ({
       structureScore: typeof aiResult.structureScore === 'number' ? aiResult.structureScore : null,
       aiFeedback: aiResult.feedback,
       missingPoints: aiResult.missingPoints,
+      offTopicDetected: Boolean(aiResult.isOffTopic),
+      offTopicReason: String(aiResult.offTopicReason || '').trim(),
       sectionAnalysis: Array.isArray(aiResult.sectionAnalysis) ? aiResult.sectionAnalysis : [],
     });
 
@@ -491,6 +495,8 @@ exports.submitTask = async (req, res) => {
         aiMarks: null,
         aiFeedback: '',
         missingPoints: '',
+        offTopicDetected: false,
+        offTopicReason: '',
         reopenedForResubmissionAt: reopenedAt,
         reopenedForResubmissionBy: reopenedBy,
         reopenedForResubmissionReason: reopenReason,
@@ -620,6 +626,10 @@ exports.evaluateSubmission = async (req, res) => {
     if (remarks !== undefined) submission.remarks = remarks;
     if (feedback !== undefined && remarks === undefined) submission.remarks = feedback;
     if (submission.remarks !== undefined) submission.feedback = submission.remarks;
+    const offTopicDetected = Boolean(submission?.evaluationDetails?.offTopicDetected);
+    if (offTopicDetected) {
+      submission.marks = 0;
+    }
     const normalizedAiReport = normalizeAiReportPayload(aiReport ?? submission.aiReport);
     submission.aiReport = normalizedAiReport;
     submission.status = 'evaluated';
@@ -631,6 +641,8 @@ exports.evaluateSubmission = async (req, res) => {
       aiMarks: typeof submission.aiMarks === 'number' ? submission.aiMarks : null,
       aiFeedback: submission.aiFeedback || '',
       missingPoints: submission.missingPoints || '',
+      offTopicDetected,
+      offTopicReason: String(submission?.evaluationDetails?.offTopicReason || '').trim(),
       aiReport: normalizedAiReport,
       evaluatedBy: req.user._id,
       evaluatedAt: submission.evaluatedAt,
@@ -688,6 +700,8 @@ exports.generateAiAssist = async (req, res) => {
         aiMarks: null,
         aiFeedback: NO_READABLE_CONTENT_MESSAGE,
         missingPoints: '',
+        offTopicDetected: false,
+        offTopicReason: '',
       });
       await submission.save();
       return res.status(422).json({ message: NO_READABLE_CONTENT_MESSAGE });
@@ -727,6 +741,8 @@ exports.generateAiAssist = async (req, res) => {
       structureScore: typeof aiDraft.structureScore === 'number' ? aiDraft.structureScore : null,
       aiFeedback: submission.aiFeedback,
       missingPoints: submission.missingPoints || '',
+      offTopicDetected: Boolean(aiDraft.isOffTopic),
+      offTopicReason: String(aiDraft.offTopicReason || '').trim(),
       aiReport,
       sectionAnalysis: Array.isArray(aiDraft.sectionAnalysis) ? aiDraft.sectionAnalysis : [],
     });

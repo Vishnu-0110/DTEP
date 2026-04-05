@@ -4,6 +4,90 @@ const User = require('../models/User');
 const { syncMissedSubmissions } = require('../utils/missedSubmissionSync');
 const { generateAssignmentRubric, buildFallbackRubricFromTopic } = require('../utils/aiEvaluation');
 
+const extractLabeledLine = (text = '', label = '') => {
+  const source = String(text || '');
+  const targetLabel = String(label || '').trim();
+  if (!source || !targetLabel) return '';
+
+  const escapedLabel = targetLabel.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+  const match = source.match(new RegExp(`${escapedLabel}\\s*:\\s*([^\\n\\r]+)`, 'i'));
+  if (!match?.[1]) return '';
+
+  const value = String(match[1] || '').replace(/\.\s*$/, '').trim();
+  if (!value) return '';
+  return `${targetLabel}: ${value}.`;
+};
+
+const toDisplayRubricSection = (section = {}, index = 0) => {
+  const label = String(section?.label || section?.name || section?.title || '').trim();
+  if (!label) return null;
+
+  const maxMarks = Number.isFinite(Number(section?.maxMarks))
+    ? Math.max(1, Math.trunc(Number(section.maxMarks)))
+    : 10;
+  const required = section?.required !== false;
+  const minWords = Number.isFinite(Number(section?.minWords))
+    ? Math.max(0, Math.trunc(Number(section.minWords)))
+    : 220;
+
+  return {
+    key: String(section?.key || `section_${index + 1}`).trim(),
+    label,
+    maxMarks,
+    required,
+    minWords,
+  };
+};
+
+const buildDetailedRubricText = ({ rubricSections = [], requiredPages = 0, sourceRubricText = '' }) => {
+  const normalizedSections = (Array.isArray(rubricSections) ? rubricSections : [])
+    .map((section, index) => toDisplayRubricSection(section, index))
+    .filter(Boolean);
+
+  if (normalizedSections.length === 0) {
+    return String(sourceRubricText || '').trim();
+  }
+
+  const total = normalizedSections.reduce((sum, section) => sum + section.maxMarks, 0);
+  const normalizedRequiredPages = Number.isFinite(Number(requiredPages))
+    ? Math.max(0, Math.trunc(Number(requiredPages)))
+    : 0;
+
+  const lines = [
+    'Topic-Specific Evaluation Rubric:',
+    ...normalizedSections.map((section) => (
+      `- ${section.label} = ${section.maxMarks} marks (${section.required ? 'Required' : 'Optional'}, target ${section.minWords}+ words)`
+    )),
+    total > 0 ? `Total = ${total} marks (scaled to 100 in final score).` : '',
+    normalizedRequiredPages > 0 ? `Minimum length: ${normalizedRequiredPages} page(s).` : '',
+  ].map((line) => String(line || '').trim()).filter(Boolean);
+
+  const qualityLine = extractLabeledLine(sourceRubricText, 'Quality checks');
+  const referencesLine = extractLabeledLine(sourceRubricText, 'Suggested references');
+
+  if (qualityLine) lines.push(qualityLine);
+  if (referencesLine) lines.push(referencesLine);
+
+  return lines.join('\n');
+};
+
+const normalizeTaskForClient = (taskDocOrObject) => {
+  const task = taskDocOrObject?.toObject ? taskDocOrObject.toObject() : taskDocOrObject;
+  if (!task || typeof task !== 'object') return taskDocOrObject;
+
+  const rubricSections = Array.isArray(task.rubricSections) ? task.rubricSections : [];
+  const normalizedRubricText = buildDetailedRubricText({
+    rubricSections,
+    requiredPages: task.requiredPages,
+    sourceRubricText: task.rubricText,
+  });
+
+  return {
+    ...task,
+    rubricText: normalizedRubricText,
+  };
+};
+
 exports.createTask = async (req, res) => {
   const normalizeText = (value, max = 6000) => String(value || '').trim().slice(0, max);
   const title = normalizeText(req.body?.title, 180);
@@ -58,7 +142,7 @@ exports.createTask = async (req, res) => {
       createdBy: req.user._id,
     });
 
-    res.status(201).json(task);
+    res.status(201).json(normalizeTaskForClient(task));
 
     void (async () => {
       try {
@@ -116,12 +200,13 @@ exports.getTasks = async (req, res) => {
       .populate('createdBy', 'name')
       .sort('-createdAt')
       .lean();
+    const normalizedTasks = tasks.map((task) => normalizeTaskForClient(task));
 
-    if (req.user?.role !== 'evaluator' || tasks.length === 0) {
-      return res.json(tasks);
+    if (req.user?.role !== 'evaluator' || normalizedTasks.length === 0) {
+      return res.json(normalizedTasks);
     }
 
-    const taskIds = tasks.map((task) => task._id);
+    const taskIds = normalizedTasks.map((task) => task._id);
     const [totalStudents, submissionCounts] = await Promise.all([
       User.countDocuments({ role: 'student' }),
       Submission.aggregate([
@@ -160,7 +245,7 @@ exports.getTasks = async (req, res) => {
       submissionCounts.map((item) => [String(item._id), item.count])
     );
 
-    const tasksWithStats = tasks.map((task) => ({
+    const tasksWithStats = normalizedTasks.map((task) => ({
       ...task,
       submissions: submissionCountByTask.get(String(task._id)) || 0,
       total: totalStudents,
@@ -181,7 +266,7 @@ exports.getTaskById = async (req, res) => {
       return res.status(403).json({ message: 'Not authorized to access this task' });
     }
 
-    res.json(task);
+    res.json(normalizeTaskForClient(task));
   } catch (error) {
     res.status(500).json({ message: error.message });
   }

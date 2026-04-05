@@ -245,20 +245,50 @@ const Submissions: React.FC = () => {
     setIsSubmitting(true);
     try {
       const finalFeedback = appendMissingPoints(feedback, activeSubmission.missingPoints);
-      await api.put(`/submissions/${activeSubmission._id}/evaluate`, {
+      const response = await api.put(`/submissions/${activeSubmission._id}/evaluate`, {
         marks,
         feedback: finalFeedback,
         aiReport: aiAnalysis
       });
+      const serverSubmission = response.data || {};
+      const persistedMarks = typeof serverSubmission.marks === 'number'
+        ? clampMarks(serverSubmission.marks)
+        : marks;
+      const persistedReport = normalizeAiReport(serverSubmission.aiReport || aiAnalysis || {});
+      const persistedFeedback = appendMissingPoints(
+        serverSubmission.feedback || serverSubmission.remarks || finalFeedback,
+        serverSubmission.missingPoints || activeSubmission.missingPoints || ''
+      );
       
       setSubmissions(prev => prev.map(s => 
         s._id === activeSubmission._id 
-          ? { ...s, marks, feedback: finalFeedback, aiReport: aiAnalysis, status: 'evaluated' } 
+          ? {
+              ...s,
+              ...serverSubmission,
+              marks: persistedMarks,
+              feedback: persistedFeedback,
+              aiReport: persistedReport,
+              status: 'evaluated'
+            } 
           : s
       ));
       
-      setFeedback(finalFeedback);
-      setActiveSubmission(prev => ({ ...prev, marks, feedback: finalFeedback, aiReport: aiAnalysis, status: 'evaluated' }));
+      setMarks(persistedMarks);
+      setMarksInput(String(persistedMarks));
+      setFeedback(persistedFeedback);
+      setAiAnalysis(persistedReport);
+      setActiveSubmission(prev => (
+        prev
+          ? {
+              ...prev,
+              ...serverSubmission,
+              marks: persistedMarks,
+              feedback: persistedFeedback,
+              aiReport: persistedReport,
+              status: 'evaluated'
+            }
+          : prev
+      ));
       alert('Evaluation finalized and student notified.');
     } catch (err: any) {
       alert(err.response?.data?.message || 'Failed to update evaluation.');

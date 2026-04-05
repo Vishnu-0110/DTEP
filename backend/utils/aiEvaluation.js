@@ -76,6 +76,24 @@ const clampInt = (value, min, max, fallback) => {
   if (!Number.isFinite(numeric)) return fallback;
   return Math.min(max, Math.max(min, Math.trunc(numeric)));
 };
+const toBoolean = (value) => {
+  if (typeof value === 'boolean') return value;
+  if (typeof value === 'number') return value === 1;
+  if (typeof value === 'string') {
+    const normalized = value.trim().toLowerCase();
+    if (['true', 'yes', 'y', '1'].includes(normalized)) return true;
+    if (['false', 'no', 'n', '0'].includes(normalized)) return false;
+  }
+  return false;
+};
+const OFF_TOPIC_PATTERN = /\b(off[\s-]?topic|unrelated|different topic|not relevant|irrelevant|wrong (pdf|file|document)|does not match (the )?(assignment|topic)|mismatch)\b/i;
+const inferOffTopicFromText = (...values) => {
+  const combined = values
+    .map((value) => String(value || '').trim())
+    .filter(Boolean)
+    .join(' ');
+  return OFF_TOPIC_PATTERN.test(combined);
+};
 
 const buildHeadingRegex = (headings) => {
   const options = headings.map(escapeRegExp).join('|');
@@ -398,6 +416,25 @@ const parseJsonFromText = (text) => {
   }
 };
 
+const splitPipeDelimitedList = (value = '') => (
+  String(value || '')
+    .split('|')
+    .map((item) => String(item || '').trim())
+    .filter(Boolean)
+);
+
+const extractLabeledInlineList = (text = '', label = '') => {
+  const source = String(text || '');
+  const targetLabel = String(label || '').trim();
+  if (!source || !targetLabel) return [];
+
+  const match = source.match(new RegExp(`${escapeRegExp(targetLabel)}\\s*:\\s*([^\\n\\r]+)`, 'i'));
+  if (!match?.[1]) return [];
+
+  const cleaned = String(match[1] || '').replace(/\.\s*$/, '').trim();
+  return splitPipeDelimitedList(cleaned);
+};
+
 const resolveRubricContext = (options = {}) => {
   const fromSections = normalizeRubricSections(
     Array.isArray(options?.rubricSections) ? options.rubricSections : []
@@ -449,11 +486,17 @@ const resolveRubricContext = (options = {}) => {
 const normalizeResult = (rawText, modelName) => {
   const parsed = parseJsonFromText(rawText) || {};
   const marksNumber = Number(parsed.marks);
+  const isOffTopic = toBoolean(parsed.isOffTopic ?? parsed.offTopic ?? parsed.wrongFile);
+  const offTopicReason = typeof parsed.offTopicReason === 'string'
+    ? parsed.offTopicReason.trim()
+    : '';
 
   return {
     marks: Number.isFinite(marksNumber) ? Math.max(0, Math.min(100, Math.round(marksNumber))) : null,
     feedback: typeof parsed.feedback === 'string' ? parsed.feedback.trim() : 'AI feedback unavailable.',
     missingPoints: typeof parsed.missingPoints === 'string' ? parsed.missingPoints.trim() : '',
+    isOffTopic,
+    offTopicReason,
     raw: rawText,
     model: modelName,
   };
@@ -462,6 +505,10 @@ const normalizeResult = (rawText, modelName) => {
 const normalizeDetailedResult = (rawText, modelName) => {
   const parsed = parseJsonFromText(rawText) || {};
   const scoreNumber = Number(parsed.score);
+  const isOffTopic = toBoolean(parsed.isOffTopic ?? parsed.offTopic ?? parsed.wrongFile);
+  const offTopicReason = typeof parsed.offTopicReason === 'string'
+    ? parsed.offTopicReason.trim()
+    : '';
 
   return {
     score: Number.isFinite(scoreNumber) ? Math.max(0, Math.min(100, Math.round(scoreNumber))) : null,
@@ -469,6 +516,8 @@ const normalizeDetailedResult = (rawText, modelName) => {
     strengths: Array.isArray(parsed.strengths) ? parsed.strengths.map((v) => String(v).trim()).filter(Boolean) : [],
     weaknesses: Array.isArray(parsed.weaknesses) ? parsed.weaknesses.map((v) => String(v).trim()).filter(Boolean) : [],
     improvements: Array.isArray(parsed.improvements) ? parsed.improvements.map((v) => String(v).trim()).filter(Boolean) : [],
+    isOffTopic,
+    offTopicReason,
     raw: rawText,
     model: modelName,
   };
@@ -476,20 +525,33 @@ const normalizeDetailedResult = (rawText, modelName) => {
 
 const normalizeRubricResult = (rawText, modelName, context = {}) => {
   const parsed = parseJsonFromText(rawText) || {};
+  const plainRubric = typeof parsed.rubricText === 'string'
+    ? parsed.rubricText.trim()
+    : '';
 
   const toList = (value) =>
     Array.isArray(value)
       ? value.map((item) => String(item || '').trim()).filter(Boolean)
       : [];
 
-  const qualityChecks = dedupeList(toList(parsed.qualityChecks));
-  const referenceGuidance = dedupeList(toList(parsed.referenceGuidance));
+  const qualityChecks = dedupeList([
+    ...toList(parsed.qualityChecks),
+    ...extractLabeledInlineList(plainRubric, 'Quality checks'),
+  ]);
+  const referenceGuidance = dedupeList([
+    ...toList(parsed.referenceGuidance),
+    ...extractLabeledInlineList(plainRubric, 'Suggested references'),
+  ]);
 
   let rubricSections = normalizeRubricSections(
     Array.isArray(parsed.rubricSections) ? parsed.rubricSections : (
       Array.isArray(parsed.sections) ? parsed.sections : []
     )
   );
+
+  if (rubricSections.length === 0 && plainRubric) {
+    rubricSections = normalizeRubricSections(parseSectionsFromRubricText(plainRubric));
+  }
 
   if (rubricSections.length === 0) {
     const requiredSections = toList(parsed.requiredSections);
@@ -511,15 +573,11 @@ const normalizeRubricResult = (rawText, modelName, context = {}) => {
     rubricSections = normalizeRubricSections(DEFAULT_RUBRIC_SECTIONS);
   }
 
-  const plainRubric = typeof parsed.rubricText === 'string'
-    ? parsed.rubricText.trim()
-    : '';
-
   const generatedDescription = typeof parsed.generatedDescription === 'string'
     ? parsed.generatedDescription.trim()
     : '';
 
-  const rubricText = plainRubric || buildRubricTextFromSections({
+  const rubricText = buildRubricTextFromSections({
     sections: rubricSections,
     qualityChecks,
     referenceGuidance,
@@ -797,11 +855,15 @@ ${rubricContext.sectionGuidance.map((line) => `- ${line}`).join('\n')}
 Balanced rubric rules:
 ${rubricContext.balancedRules.map((line) => `- ${line}`).join('\n')}
 
+If the student answer is mostly unrelated to the assignment topic (for example, wrong PDF uploaded), set "isOffTopic" to true and award 0 marks.
+
 Return ONLY valid JSON:
 {
   "marks": number,
   "feedback": "short feedback",
-  "missingPoints": "important points missing"
+  "missingPoints": "important points missing",
+  "isOffTopic": boolean,
+  "offTopicReason": "short reason when off-topic"
 }
 `;
 
@@ -824,6 +886,7 @@ Balanced rubric rules:
 ${rubricContext.balancedRules.map((line) => `- ${line}`).join('\n')}
 
 Return a final score on a 0-100 scale. Missing required sections should reduce marks significantly, but should not force an automatic zero when meaningful content exists.
+If the submission is mostly unrelated to the assignment topic (wrong PDF / different subject), set "isOffTopic" to true and set "score" to 0.
 
 Return ONLY valid JSON with this shape:
 {
@@ -831,7 +894,9 @@ Return ONLY valid JSON with this shape:
   "summary": "short evaluation summary",
   "strengths": ["point 1", "point 2"],
   "weaknesses": ["point 1", "point 2"],
-  "improvements": ["point 1", "point 2"]
+  "improvements": ["point 1", "point 2"],
+  "isOffTopic": boolean,
+  "offTopicReason": "short reason when off-topic"
 }
 `;
 
@@ -898,6 +963,32 @@ const runGeminiPrompt = async (prompt, normalizer, context = {}) => {
 
 const mergeAutomaticResult = (aiResult, structureAnalysis) => {
   const rawMarks = typeof aiResult.marks === 'number' ? aiResult.marks : null;
+  const isOffTopic = Boolean(aiResult.isOffTopic) || (
+    rawMarks !== null &&
+    rawMarks <= 5 &&
+    inferOffTopicFromText(aiResult.feedback, aiResult.missingPoints)
+  );
+  const offTopicReason = String(
+    aiResult.offTopicReason || 'Submission appears unrelated to the assignment topic.'
+  ).trim();
+
+  if (isOffTopic) {
+    return {
+      ...aiResult,
+      rawMarks,
+      marks: 0,
+      structureScore: structureAnalysis.structureScore,
+      sectionAnalysis: structureAnalysis.sections,
+      isOffTopic: true,
+      offTopicReason,
+      feedback: joinSentences([offTopicReason, 'Wrong or unrelated PDF detected. Awarded 0 marks.']),
+      missingPoints: joinClauses([
+        aiResult.missingPoints,
+        'Submission content does not match the assigned topic (possible wrong PDF upload).',
+      ]),
+    };
+  }
+
   const blendedMarks = rawMarks === null
     ? structureAnalysis.structureScore
     : Math.round((rawMarks * 0.8) + (structureAnalysis.structureScore * 0.2));
@@ -935,6 +1026,40 @@ const mergeAutomaticResult = (aiResult, structureAnalysis) => {
 
 const mergeDetailedResult = (aiResult, structureAnalysis) => {
   const rawScore = typeof aiResult.score === 'number' ? aiResult.score : null;
+  const isOffTopic = Boolean(aiResult.isOffTopic) || (
+    rawScore !== null &&
+    rawScore <= 5 &&
+    inferOffTopicFromText(
+      aiResult.summary,
+      ...(Array.isArray(aiResult.weaknesses) ? aiResult.weaknesses : [])
+    )
+  );
+  const offTopicReason = String(
+    aiResult.offTopicReason || 'Submission appears unrelated to the assignment topic.'
+  ).trim();
+
+  if (isOffTopic) {
+    return {
+      ...aiResult,
+      rawScore,
+      score: 0,
+      structureScore: structureAnalysis.structureScore,
+      sectionAnalysis: structureAnalysis.sections,
+      isOffTopic: true,
+      offTopicReason,
+      summary: joinSentences([offTopicReason, 'Wrong or unrelated PDF detected. Score set to 0.']),
+      strengths: dedupeList(aiResult.strengths),
+      weaknesses: dedupeList([
+        ...aiResult.weaknesses,
+        'Submission is off-topic for this assignment.',
+      ]),
+      improvements: dedupeList([
+        ...aiResult.improvements,
+        'Upload the correct PDF that answers the assigned topic.',
+      ]),
+    };
+  }
+
   const blendedScore = rawScore === null
     ? structureAnalysis.structureScore
     : Math.round((rawScore * 0.8) + (structureAnalysis.structureScore * 0.2));

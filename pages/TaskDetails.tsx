@@ -34,6 +34,21 @@ const formatCountdown = (deadline?: string, nowMs?: number) => {
   return `${String(hours).padStart(2, '0')}:${String(minutes).padStart(2, '0')}:${String(seconds).padStart(2, '0')}`;
 };
 
+const URL_PATTERN = /\bhttps?:\/\/\S+\b/gi;
+const sanitizeStudentText = (value = '') => (
+  String(value || '').replace(URL_PATTERN, '').trim()
+);
+
+const sanitizeStudentRubricText = (value = '') => (
+  String(value || '')
+    .split(/\r?\n/)
+    .filter((line) => !/^\s*(suggested references?|reference links?|reference link|reference)\s*:/i.test(line))
+    .map((line) => String(line || '').replace(URL_PATTERN, '').trimEnd())
+    .filter(Boolean)
+    .join('\n')
+    .trim()
+);
+
 const TaskDetails: React.FC = () => {
   const { taskId } = useParams();
   const [task, setTask] = useState<Task | null>(null);
@@ -44,7 +59,8 @@ const TaskDetails: React.FC = () => {
   const [nowMs, setNowMs] = useState(Date.now());
   const verifiedScore = typeof submission?.marks === 'number' ? submission.marks : null;
   const verifiedScoreTone = getScoreTone(verifiedScore);
-  const rubricText = String((task as any)?.rubricText || '').trim();
+  const rubricText = sanitizeStudentRubricText((task as any)?.rubricText || '');
+  const taskDescription = sanitizeStudentText((task as any)?.description || '');
   const requiredPages = Math.max(0, Math.trunc(Number((task as any)?.requiredPages || 0)));
   const sectionAnalysis = Array.isArray((submission as any)?.evaluationDetails?.sectionAnalysis)
     ? (submission as any).evaluationDetails.sectionAnalysis
@@ -115,7 +131,9 @@ const TaskDetails: React.FC = () => {
         <div className="space-y-8">
           <div className="space-y-3">
             <h1 className="text-3xl sm:text-4xl lg:text-5xl font-black text-adaptive-main tracking-tighter leading-tight uppercase">{task?.title || 'Architecture Deep Dive'}</h1>
-            <p className="text-adaptive-sub text-base sm:text-lg font-medium leading-relaxed max-w-2xl">{task?.description || 'Advanced assignment focused on system patterns, performance audits, and atomic design integration.'}</p>
+            {taskDescription && (
+              <p className="text-adaptive-sub text-base sm:text-lg font-medium leading-relaxed max-w-2xl">{taskDescription}</p>
+            )}
             {(rubricText || requiredPages > 0) && (
               <div className="mt-4 rounded-3xl border border-blue-500/20 bg-blue-500/10 p-4 sm:p-5">
                 <p className="text-[9px] font-black uppercase tracking-widest theme-text-primary">AI Rubric Guidance</p>

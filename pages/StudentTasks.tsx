@@ -55,6 +55,17 @@ const DEFAULT_RUBRIC_GUIDANCE = [
   'Conclude clearly and include credible references',
 ];
 const FEEDBACK_PREVIEW_MAX_CHARS = 220;
+const URL_PATTERN = /\bhttps?:\/\/\S+\b/gi;
+
+const sanitizeStudentRubricText = (value = '') => (
+  String(value || '')
+    .split(/\r?\n/)
+    .filter((line) => !/^\s*(suggested references?|reference links?|reference link|reference)\s*:/i.test(line))
+    .map((line) => String(line || '').replace(URL_PATTERN, '').trimEnd())
+    .filter(Boolean)
+    .join('\n')
+    .trim()
+);
 
 const toFeedbackPreview = (value: string, maxChars = FEEDBACK_PREVIEW_MAX_CHARS) => {
   const normalized = String(value || '').replace(/\s+/g, ' ').trim();
@@ -129,7 +140,7 @@ const StudentTasks: React.FC = () => {
           reopenedAt: submission?.reopenedAt || null,
           resubmissionCount: Number(submission?.resubmissionCount || 0),
           requiredPages: Number(task?.requiredPages || 0),
-          rubricText: String(task?.rubricText || '').trim(),
+          rubricText: sanitizeStudentRubricText(task?.rubricText || ''),
         };
       });
 
