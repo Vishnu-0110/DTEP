@@ -10,6 +10,7 @@ const Dashboard = lazy(() => import('./pages/Dashboard'));
 const AdminUsers = lazy(() => import('./pages/AdminUsers'));
 const EvaluatorTasks = lazy(() => import('./pages/EvaluatorTasks'));
 const StudentTasks = lazy(() => import('./pages/StudentTasks'));
+const HelpDesk = lazy(() => import('./pages/HelpDesk'));
 const Submissions = lazy(() => import('./pages/Submissions'));
 const TaskDetails = lazy(() => import('./pages/TaskDetails'));
 const Layout = lazy(() => import('./layouts/Layout'));
@@ -44,13 +45,16 @@ const App: React.FC = () => {
                 
                 {/* Admin Routes */}
                 <Route path="admin/users" element={<ProtectedRoute allowedRoles={['admin']}><AdminUsers /></ProtectedRoute>} />
+                <Route path="admin/helpdesk" element={<ProtectedRoute allowedRoles={['admin']}><HelpDesk /></ProtectedRoute>} />
                 
                 {/* Evaluator Routes */}
                 <Route path="evaluator/tasks" element={<ProtectedRoute allowedRoles={['evaluator']}><EvaluatorTasks /></ProtectedRoute>} />
+                <Route path="evaluator/helpdesk" element={<ProtectedRoute allowedRoles={['evaluator']}><HelpDesk /></ProtectedRoute>} />
                 <Route path="evaluator/submissions/:taskId" element={<ProtectedRoute allowedRoles={['evaluator']}><Submissions /></ProtectedRoute>} />
                 
                 {/* Student Routes */}
                 <Route path="student/tasks" element={<ProtectedRoute allowedRoles={['student']}><StudentTasks /></ProtectedRoute>} />
+                <Route path="student/helpdesk" element={<ProtectedRoute allowedRoles={['student']}><HelpDesk /></ProtectedRoute>} />
                 <Route path="task/:taskId" element={<TaskDetails />} />
               </Route>
             </Routes>

@@ -24,7 +24,8 @@ import {
   Check,
   Moon,
   Sun,
-  Wrench
+  Wrench,
+  LifeBuoy
 } from 'lucide-react';
 
 type StudentTaskNotificationItem = StudentTaskNotification & { read: boolean };
@@ -404,8 +405,11 @@ const Layout: React.FC = () => {
   const navItems = [
     { label: 'Dashboard', path: '/dashboard', icon: <LayoutDashboard size={20} />, roles: ['admin', 'evaluator', 'student'] },
     { label: 'Manage Users', path: '/admin/users', icon: <Users size={20} />, roles: ['admin'] },
+    { label: 'Help Desk', path: '/admin/helpdesk', icon: <LifeBuoy size={20} />, roles: ['admin'] },
     { label: 'Tasks', path: '/evaluator/tasks', icon: <ClipboardList size={20} />, roles: ['evaluator'] },
+    { label: 'Help Desk', path: '/evaluator/helpdesk', icon: <LifeBuoy size={20} />, roles: ['evaluator'] },
     { label: 'My Tasks', path: '/student/tasks', icon: <GraduationCap size={20} />, roles: ['student'] },
+    { label: 'Help Desk', path: '/student/helpdesk', icon: <LifeBuoy size={20} />, roles: ['student'] },
   ];
 
   const filteredNavItems = navItems.filter(item => item.roles.includes(user?.role || ''));
