@@ -108,10 +108,7 @@ const Dashboard: React.FC = () => {
     if (role === 'evaluator') {
       const submissionsTotal = typeof totals.submissionsTotal === 'number' ? totals.submissionsTotal : 0;
       const evaluatedSubmissions = typeof totals.evaluatedSubmissions === 'number' ? totals.evaluatedSubmissions : 0;
-      const reviewRateScore = submissionsTotal > 0
-        ? Math.round((evaluatedSubmissions / submissionsTotal) * 100)
-        : null;
-      const reviewRate = reviewRateScore !== null ? `${reviewRateScore}%` : 'N/A';
+      const missedSubmissions = typeof totals.missedSubmissions === 'number' ? totals.missedSubmissions : 0;
       return [
         {
           label: 'My Tasks',
@@ -129,14 +126,13 @@ const Dashboard: React.FC = () => {
           label: 'Pending Review',
           value: totals.pendingSubmissions ?? 0,
           icon: <Clock className="text-amber-400" />,
-          sub: `${totals.missedSubmissions ?? 0} missed`
+          sub: `${evaluatedSubmissions} reviewed`
         },
         {
-          label: 'Review Rate',
-          value: reviewRate,
-          valueClassName: getScoreTone(reviewRateScore).valueTextClass,
-          icon: <TrendingUp className="theme-text-primary" />,
-          sub: submissionsTotal > 0 ? `${evaluatedSubmissions}/${submissionsTotal} reviewed` : 'No submissions yet'
+          label: 'Missed Submissions',
+          value: missedSubmissions,
+          icon: <AlertCircle className="text-rose-400" />,
+          sub: missedSubmissions > 0 ? 'Auto 0 assigned' : 'None missed'
         },
       ];
     }
