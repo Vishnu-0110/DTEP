@@ -76,3 +76,22 @@ export interface Stats {
   totalSubmissions: number;
   pendingEvaluations: number;
 }
+
+export type HelpdeskQueryStatus = 'open' | 'in_progress' | 'resolved' | 'closed';
+
+export interface HelpdeskQuery {
+  _id: string;
+  subject: string;
+  message: string;
+  status: HelpdeskQueryStatus;
+  raisedBy?: string;
+  raisedByRole?: string;
+  raisedByName?: string;
+  raisedByEmail?: string;
+  raisedByDepartment?: string;
+  adminNotes?: string;
+  resolvedAt?: string | null;
+  resolvedBy?: string | null;
+  createdAt: string;
+  updatedAt: string;
+}

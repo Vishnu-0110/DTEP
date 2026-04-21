@@ -13,6 +13,7 @@ const taskRoutes = require('./routes/taskRoutes');
 const submissionRoutes = require('./routes/submissionRoutes');
 const statsRoutes = require('./routes/statsRoutes');
 const systemRoutes = require('./routes/systemRoutes');
+const helpdeskRoutes = require('./routes/helpdeskRoutes');
 const { ensureUploadDir, resolveUploadDir } = require('./config/storage');
 
 const jwtSecret = String(process.env.JWT_SECRET || '').trim();
@@ -81,6 +82,7 @@ app.use('/api/tasks', taskRoutes);
 app.use('/api/submissions', submissionRoutes);
 app.use('/api/stats', statsRoutes);
 app.use('/api/system', systemRoutes);
+app.use('/api/helpdesk', helpdeskRoutes);
 
 app.get(['/healthz', '/api/healthz'], (req, res) => {
   return res.json({

@@ -32,18 +32,19 @@ export const isRouteAllowedForRole = (path: string, role?: UserRole | string) =>
   const normalizedRole = String(role || '').trim().toLowerCase();
 
   if (normalizedRole === UserRole.ADMIN) {
-    return normalizedPath === '/admin/users';
+    return normalizedPath === '/admin/users' || normalizedPath === '/admin/helpdesk';
   }
 
   if (normalizedRole === UserRole.EVALUATOR) {
     return (
       normalizedPath === '/evaluator/tasks' ||
+      normalizedPath === '/evaluator/helpdesk' ||
       normalizedPath.startsWith('/evaluator/submissions/')
     );
   }
 
   if (normalizedRole === UserRole.STUDENT) {
-    return normalizedPath === '/student/tasks';
+    return normalizedPath === '/student/tasks' || normalizedPath === '/student/helpdesk';
   }
 
   return false;
@@ -59,9 +60,12 @@ const isPersistableRoute = (path: string) => {
   return (
     normalizedPath === '/dashboard' ||
     normalizedPath === '/admin/users' ||
+    normalizedPath === '/admin/helpdesk' ||
     normalizedPath === '/evaluator/tasks' ||
+    normalizedPath === '/evaluator/helpdesk' ||
     normalizedPath.startsWith('/evaluator/submissions/') ||
     normalizedPath === '/student/tasks' ||
+    normalizedPath === '/student/helpdesk' ||
     normalizedPath.startsWith('/task/')
   );
 };
