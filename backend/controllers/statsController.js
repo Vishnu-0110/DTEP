@@ -109,30 +109,23 @@ exports.getSummary = async (req, res) => {
         submissionsTotal,
         pendingSubmissions,
         evaluatedSubmissions,
-        missedSubmissions,
-        avgMarksAgg
+        missedSubmissions
       ] = match ? await Promise.all([
         Submission.countDocuments(andMatch(match, actualSubmissionFilter)),
         Submission.countDocuments(andMatch(match, actualSubmissionFilter, { status: 'pending' })),
         Submission.countDocuments(andMatch(match, actualSubmissionFilter, evaluatedSubmissionFilter)),
-        Submission.countDocuments(andMatch(match, autoZeroFilter)),
-        Submission.aggregate([
-          { $match: andMatch(match, { marks: { $type: 'number' } }) },
-          { $group: { _id: null, avg: { $avg: '$marks' } } }
-        ])
-      ]) : [0, 0, 0, 0, []];
-
-      const avgMarks = avgMarksAgg[0]?.avg ?? null;
+        Submission.countDocuments(andMatch(match, autoZeroFilter))
+      ]) : [0, 0, 0, 0];
 
       return res.json({
         role,
         totals: {
           tasksCreated: tasks.length,
+          openTasks,
           submissionsTotal,
           pendingSubmissions,
           evaluatedSubmissions,
-          missedSubmissions,
-          avgMarks
+          missedSubmissions
         },
         chart: buildStatusChart([
           { name: 'Open', count: openTasks, tone: 'open' },

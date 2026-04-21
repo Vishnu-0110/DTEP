@@ -106,14 +106,18 @@ const Dashboard: React.FC = () => {
     }
 
     if (role === 'evaluator') {
-      const avgScore = typeof totals.avgMarks === 'number' ? Math.round(totals.avgMarks) : null;
-      const avg = avgScore !== null ? `${avgScore}%` : 'N/A';
+      const submissionsTotal = typeof totals.submissionsTotal === 'number' ? totals.submissionsTotal : 0;
+      const evaluatedSubmissions = typeof totals.evaluatedSubmissions === 'number' ? totals.evaluatedSubmissions : 0;
+      const reviewRateScore = submissionsTotal > 0
+        ? Math.round((evaluatedSubmissions / submissionsTotal) * 100)
+        : null;
+      const reviewRate = reviewRateScore !== null ? `${reviewRateScore}%` : 'N/A';
       return [
         {
           label: 'My Tasks',
           value: totals.tasksCreated ?? 0,
           icon: <CheckCircle className="text-emerald-400" />,
-          sub: `${totals.missedSubmissions ?? 0} missed`
+          sub: `${totals.openTasks ?? 0} active`
         },
         {
           label: 'Submitted Work',
@@ -128,11 +132,11 @@ const Dashboard: React.FC = () => {
           sub: `${totals.missedSubmissions ?? 0} missed`
         },
         {
-          label: 'Avg Grade',
-          value: avg,
-          valueClassName: getScoreTone(avgScore).valueTextClass,
+          label: 'Review Rate',
+          value: reviewRate,
+          valueClassName: getScoreTone(reviewRateScore).valueTextClass,
           icon: <TrendingUp className="theme-text-primary" />,
-          sub: 'All outcomes'
+          sub: submissionsTotal > 0 ? `${evaluatedSubmissions}/${submissionsTotal} reviewed` : 'No submissions yet'
         },
       ];
     }
