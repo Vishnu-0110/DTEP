@@ -225,15 +225,15 @@ const HelpDesk: React.FC = () => {
         {(error || success) && (
           <div className="mt-5">
             {error && (
-              <div className="rounded-2xl border border-red-500/20 bg-red-500/10 px-4 py-3 flex items-center gap-2">
-                <AlertCircle size={16} className="text-red-300" />
-                <p className="text-sm text-red-100">{error}</p>
+              <div className="rounded-2xl border border-red-200 dark:border-red-500/20 bg-red-50 dark:bg-red-500/10 px-4 py-3 flex items-center gap-2">
+                <AlertCircle size={16} className="text-red-700 dark:text-red-300" />
+                <p className="text-sm text-red-900 dark:text-red-100">{error}</p>
               </div>
             )}
             {success && (
-              <div className="rounded-2xl border border-emerald-500/20 bg-emerald-500/10 px-4 py-3 flex items-center gap-2">
-                <CheckCircle2 size={16} className="text-emerald-300" />
-                <p className="text-sm text-emerald-100">{success}</p>
+              <div className="rounded-2xl border border-emerald-200 dark:border-emerald-500/20 bg-emerald-50 dark:bg-emerald-500/10 px-4 py-3 flex items-center gap-2">
+                <CheckCircle2 size={16} className="text-emerald-700 dark:text-emerald-300" />
+                <p className="text-sm text-emerald-900 dark:text-emerald-100">{success}</p>
               </div>
             )}
           </div>
