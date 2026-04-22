@@ -1,5 +1,5 @@
 
-import React, { useState, useEffect } from 'react';
+import React, { useMemo, useState, useEffect } from 'react';
 import { UserRole } from '../types';
 import { Plus, Search, Trash2, Mail, User as UserIcon, Loader2, ShieldAlert, AlertCircle, Building, CheckCircle, Wrench, Eye, EyeOff } from 'lucide-react';
 import api from '../services/api';
@@ -23,6 +23,23 @@ const getRequestErrorMessage = (error: any, fallback: string) => {
 };
 
 const DEPARTMENT_OPTIONS = ['CSE', 'IT', 'AIDS', 'ISE', 'AGRI', 'AIML', 'CT', 'CSD', 'BT', 'FT'];
+const MAX_PROFILE_PHOTO_BYTES = 1024 * 1024; // 1MB
+
+const isAllowedProfilePhotoType = (file?: File | null) => {
+  const mime = String(file?.type || '').toLowerCase();
+  if (mime === 'image/png' || mime === 'image/jpeg') return true;
+
+  const name = String(file?.name || '').toLowerCase();
+  return name.endsWith('.png') || name.endsWith('.jpg') || name.endsWith('.jpeg');
+};
+
+const readFileAsDataUrl = (file: File) =>
+  new Promise<string>((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onerror = () => reject(new Error('Unable to read file.'));
+    reader.onload = () => resolve(String(reader.result || ''));
+    reader.readAsDataURL(file);
+  });
 
 const AdminUsers: React.FC = () => {
   const { user: currentUser, isDemoMode } = useAuth();
@@ -39,6 +56,7 @@ const AdminUsers: React.FC = () => {
   const [maintenanceError, setMaintenanceError] = useState('');
   const [isSavingMaintenance, setIsSavingMaintenance] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
+  const [profilePhotoInputKey, setProfilePhotoInputKey] = useState(0);
 
   const [formData, setFormData] = useState({
     name: '',
@@ -48,6 +66,12 @@ const AdminUsers: React.FC = () => {
     department: '',
     profilePhoto: '',
   });
+
+  const profilePhotoHint = useMemo(() => {
+    if (!formData.profilePhoto) return '';
+    if (String(formData.profilePhoto).startsWith('data:image/')) return 'Selected';
+    return 'Using existing URL';
+  }, [formData.profilePhoto]);
 
   const fetchUsers = async () => {
     setIsLoading(true);
@@ -181,14 +205,15 @@ const AdminUsers: React.FC = () => {
       }
 
       setTimeout(() => {
-        setIsModalOpen(false);
-        setShowPassword(false);
-        setSuccess('');
-        setFormData({ name: '', email: '', password: '', role: UserRole.STUDENT, department: '', profilePhoto: '' });
-      }, 1500);
-    } catch (err: any) {
-      setError(err.response?.data?.message || 'Failed to create user. Email may already be in use.');
-    } finally {
+      setIsModalOpen(false);
+      setShowPassword(false);
+      setSuccess('');
+      setFormData({ name: '', email: '', password: '', role: UserRole.STUDENT, department: '', profilePhoto: '' });
+      setProfilePhotoInputKey((prev) => prev + 1);
+    }, 1500);
+  } catch (err: any) {
+    setError(err.response?.data?.message || 'Failed to create user. Email may already be in use.');
+  } finally {
       setIsSubmitting(false);
     }
   };
@@ -522,14 +547,72 @@ const AdminUsers: React.FC = () => {
             </div>
 
             <div className="space-y-1">
-              <label className="text-[9px] font-black text-adaptive-sub uppercase tracking-widest ml-1">Profile Photo URL (Optional)</label>
-              <input 
-                type="url"
-                value={formData.profilePhoto}
-                onChange={e => setFormData({...formData, profilePhoto: e.target.value})}
-                placeholder="https://example.com/photo.jpg"
-                className="w-full surface-input rounded-xl py-3 px-4 transition-all font-medium text-sm"
-              />
+              <label className="text-[9px] font-black text-adaptive-sub uppercase tracking-widest ml-1">
+                Profile Photo (Optional)
+              </label>
+              <div className="flex flex-col sm:flex-row gap-3 sm:items-center">
+                <input
+                  key={profilePhotoInputKey}
+                  type="file"
+                  accept="image/png,image/jpeg,.png,.jpg,.jpeg"
+                  onChange={async (e) => {
+                    const file = e.target.files?.[0];
+                    setError('');
+
+                    if (!file) {
+                      setFormData((prev) => ({ ...prev, profilePhoto: '' }));
+                      return;
+                    }
+
+                    if (!isAllowedProfilePhotoType(file)) {
+                      setError('Profile photo must be a PNG, JPG, or JPEG file.');
+                      setFormData((prev) => ({ ...prev, profilePhoto: '' }));
+                      setProfilePhotoInputKey((prev) => prev + 1);
+                      return;
+                    }
+
+                    if (Number(file.size || 0) > MAX_PROFILE_PHOTO_BYTES) {
+                      setError('Profile photo is too large. Please upload an image up to 1MB.');
+                      setFormData((prev) => ({ ...prev, profilePhoto: '' }));
+                      setProfilePhotoInputKey((prev) => prev + 1);
+                      return;
+                    }
+
+                    try {
+                      const dataUrl = await readFileAsDataUrl(file);
+                      setFormData((prev) => ({ ...prev, profilePhoto: dataUrl }));
+                    } catch (_) {
+                      setError('Could not read the selected photo. Try a different file.');
+                      setFormData((prev) => ({ ...prev, profilePhoto: '' }));
+                      setProfilePhotoInputKey((prev) => prev + 1);
+                    }
+                  }}
+                  className="w-full surface-input rounded-xl py-3 px-4 transition-all font-medium text-sm file:mr-4 file:rounded-lg file:border-0 file:bg-adaptive-nested file:px-3 file:py-2 file:text-[10px] file:font-black file:uppercase file:tracking-widest file:text-adaptive-main"
+                />
+
+                {formData.profilePhoto && (
+                  <div className="flex items-center gap-3">
+                    <div className="w-11 h-11 rounded-xl border border-white/10 bg-adaptive-nested overflow-hidden shrink-0">
+                      <img src={formData.profilePhoto} alt="Selected profile" className="w-full h-full object-cover" />
+                    </div>
+                    <button
+                      type="button"
+                      disabled={isSubmitting}
+                      onClick={() => {
+                        setError('');
+                        setFormData((prev) => ({ ...prev, profilePhoto: '' }));
+                        setProfilePhotoInputKey((prev) => prev + 1);
+                      }}
+                      className="btn-secondary rounded-xl px-4 py-3 text-[9px] font-black uppercase tracking-widest transition-all disabled:opacity-50"
+                    >
+                      Remove
+                    </button>
+                  </div>
+                )}
+              </div>
+              <p className="text-[10px] text-adaptive-sub opacity-70 ml-1">
+                Upload PNG/JPG/JPEG (max 1MB). {profilePhotoHint ? `(${profilePhotoHint})` : ''}
+              </p>
             </div>
 
             <div className="flex flex-col sm:flex-row gap-3 pt-4">

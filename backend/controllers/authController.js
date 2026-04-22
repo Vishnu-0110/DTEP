@@ -9,7 +9,47 @@ const generateToken = (id, sessionVersion) => {
   });
 };
 
-const normalizeProfilePhoto = (value) => String(value || '').trim();
+const MAX_PROFILE_PHOTO_BYTES = 1024 * 1024; // 1MB
+
+const estimateBase64Bytes = (base64) => {
+  const normalized = String(base64 || '').trim();
+  if (!normalized) return 0;
+
+  const padding = normalized.endsWith('==') ? 2 : normalized.endsWith('=') ? 1 : 0;
+  return Math.floor((normalized.length * 3) / 4) - padding;
+};
+
+const normalizeProfilePhoto = (value) => {
+  const raw = String(value || '').trim();
+  if (!raw) return { value: '' };
+
+  const lowered = raw.toLowerCase();
+  if (lowered.startsWith('http://') || lowered.startsWith('https://')) {
+    return { error: 'Profile photo must be uploaded as a PNG/JPG file, not a link.' };
+  }
+
+  if (!lowered.startsWith('data:image/')) {
+    return { error: 'Profile photo must be a PNG/JPG/JPEG upload.' };
+  }
+
+  const allowedPrefixes = ['data:image/png;base64,', 'data:image/jpeg;base64,', 'data:image/jpg;base64,'];
+  if (!allowedPrefixes.some((prefix) => lowered.startsWith(prefix))) {
+    return { error: 'Only PNG/JPG/JPEG profile photos are supported.' };
+  }
+
+  const commaIndex = raw.indexOf(',');
+  if (commaIndex === -1) {
+    return { error: 'Invalid profile photo data.' };
+  }
+
+  const encoded = raw.slice(commaIndex + 1).trim();
+  const estimatedBytes = estimateBase64Bytes(encoded);
+  if (estimatedBytes > MAX_PROFILE_PHOTO_BYTES) {
+    return { error: 'Profile photo is too large. Please upload an image up to 1MB.' };
+  }
+
+  return { value: raw };
+};
 
 exports.registerUser = async (req, res) => {
   const { name, email, password, role, department, profilePhoto } = req.body;
@@ -17,13 +57,18 @@ exports.registerUser = async (req, res) => {
     const userExists = await User.findOne({ email });
     if (userExists) return res.status(400).json({ message: 'User already exists' });
 
+    const normalizedPhoto = normalizeProfilePhoto(profilePhoto);
+    if (normalizedPhoto.error) {
+      return res.status(400).json({ message: normalizedPhoto.error });
+    }
+
     const user = await User.create({
       name,
       email,
       password,
       role,
       department,
-      profilePhoto: normalizeProfilePhoto(profilePhoto),
+      profilePhoto: normalizedPhoto.value,
       sessionVersion: 1,
     });
     res.status(201).json({
